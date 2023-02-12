@@ -3,47 +3,43 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod document;
 #[macro_use]
 mod terminal;
 
+use std::env;
 use std::io;
+use std::fs::File;
 
+use document::Document;
 use terminal::Event;
 
 fn process_event(mut editor: Editor, event: Event) -> Editor {
     match event {
         Event::Up => {
-            if editor.cursor.y > 0 {
-                editor.cursor.y -= 1;
-            }
+            editor.document = editor.document.up(editor.width);
         }
         Event::Down => {
-            if editor.cursor.y < editor.height - 1 {
-                editor.cursor.y += 1;
-            }
+            editor.document = editor.document.down(editor.width);
         }
         Event::Left => {
-            if editor.cursor.x > 0 {
-                editor.cursor.x -= 1;
-            }
+            editor.document = editor.document.left();
         }
         Event::Right => {
-            if editor.cursor.x < editor.width - 1 {
-                editor.cursor.x += 1;
-            }
+            editor.document = editor.document.right();
         }
 
         Event::PageUp => {
-            editor.cursor.y = 0;
+            // TODO: reimplement
         }
         Event::PageDown => {
-            editor.cursor.y = editor.height - 1;
+            // TODO: reimplement
         }
         Event::Home => {
-            editor.cursor.x = 0;
+            // TODO: reimplement
         }
         Event::End => {
-            editor.cursor.x = editor.width - 1;
+            // TODO: reimplement
         }
 
         Event::Delete => {}
@@ -64,20 +60,23 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
 }
 
 fn draw_rows(mut editor: Editor) -> Editor {
-    for y in 0..editor.height {
-        if y == editor.height / 3 {
-            editor.buffer.extend(b"Hello there");
-        } else {
-            editor.buffer.extend(b"~");
+    let window = editor.document.window(editor.width, editor.height);
+    let placeholder = String::from("~");
+
+    for i in 0..editor.height {
+        let line = window.lines.get(i).unwrap_or(&placeholder);
+        editor.buffer.extend(line.bytes());
+        
+        if line.len() < editor.width {
+            editor.buffer.extend(terminal::CLEAR_LINE);
         }
 
-        // TODO: what if lines are longer than the screen width?
-        editor.buffer.extend(terminal::CLEAR_LINE);
-
-        if y < editor.height - 1 {
+        if i < editor.height - 1 {
             editor.buffer.extend(b"\r\n");
         }
     }
+
+    editor.buffer.extend(position_cursor!(window.cursor));
 
     editor
 }
@@ -90,32 +89,25 @@ fn refresh_screen(mut editor: Editor) -> Editor {
 
     editor = draw_rows(editor);
 
-    editor.buffer.extend(position_cursor!(editor.cursor));
-
     editor.buffer.extend(terminal::SHOW_CURSOR);
 
     editor
 }
 
-struct Cursor {
-    x: u16,
-    y: u16,
-}
-
 struct Editor {
-    width: u16,
-    height: u16,
-    cursor: Cursor,
+    width: usize,
+    height: usize,
     buffer: Vec<u8>,
+    document: Document,
 }
 
 impl Editor {
-    fn new() -> Editor {
+    fn new(file: File) -> Editor {
         Editor {
             width: 0,
             height: 0,
-            cursor: Cursor { x: 0, y: 0 },
             buffer: vec![],
+            document: Document::new(file),
         }
     }
 
@@ -148,9 +140,14 @@ impl Editor {
 }
 
 fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    // TODO: handle no filename or non-existing file
+    let file = File::open(&args[1]).unwrap();
+
     let (read_input, write_output) = terminal::enter_raw_mode()?;
 
-    Editor::new().run(read_input, write_output)?;
+    Editor::new(file).run(read_input, write_output)?;
 
     terminal::exit_raw_mode()?;
 

@@ -56,7 +56,7 @@ pub enum Event {
 
     Nothing,
 
-    Resize(u16, u16),
+    Resize(usize, usize),
 
     Exit,
     Error(String),
@@ -189,7 +189,7 @@ pub fn get_window_size() -> io::Result<Event> {
         }
     }
 
-    Ok(Event::Resize(size.ws_col, size.ws_row))
+    Ok(Event::Resize(size.ws_col as usize, size.ws_row as usize))
 }
 
 pub fn handle_resize() {
