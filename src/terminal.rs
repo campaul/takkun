@@ -40,6 +40,8 @@ lazy_static! {
 }
 
 pub enum Event {
+    Input(String),
+
     Up,
     Down,
     Left,
@@ -52,13 +54,16 @@ pub enum Event {
     End,
 
     Delete,
+    Backspace,
     Escape,
+    Enter,
 
     Nothing,
 
     Resize(usize, usize),
 
     Exit,
+    Save,
     Error(String),
 }
 
@@ -137,12 +142,20 @@ fn process_keypress() -> Event {
                     return Event::Exit;
                 }
 
-                match c as char {
-                    'w' => return Event::Up,
-                    'a' => return Event::Left,
-                    's' => return Event::Down,
-                    'd' => return Event::Right,
-                    _ => {}
+                if c == ctrl('o') {
+                    return Event::Save;
+                }
+
+                if c == 13 as char {
+                    return Event::Enter;
+                }
+
+                if c == 127 as char {
+                    return Event::Backspace;
+                }
+
+                if (c as u8) > 31 && (c as u8) < 127 {
+                    return Event::Input(c.to_string());
                 }
 
                 return Event::Nothing;

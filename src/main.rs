@@ -9,13 +9,16 @@ mod terminal;
 
 use std::env;
 use std::io;
-use std::fs::File;
 
 use document::Document;
 use terminal::Event;
 
 fn process_event(mut editor: Editor, event: Event) -> Editor {
     match event {
+        Event::Input(c) => {
+            editor.document = editor.document.insert(c);
+        }
+
         Event::Up => {
             editor.document = editor.document.up(editor.width);
         }
@@ -42,8 +45,16 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
             // TODO: reimplement
         }
 
-        Event::Delete => {}
+        Event::Delete => {
+            editor.document = editor.document.delete_next();
+        }
+        Event::Backspace => {
+            editor.document = editor.document.delete_prev();
+        }
         Event::Escape => {}
+        Event::Enter => {
+            editor.document = editor.document.insert_line();
+        }
 
         Event::Nothing => {}
 
@@ -53,6 +64,11 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
         }
 
         Event::Exit => {}
+        Event::Save => {
+            if let Err(e) = editor.document.save() {
+                editor.error = Some(e);
+            }
+        }
         Event::Error(_) => {}
     }
 
@@ -66,7 +82,7 @@ fn draw_rows(mut editor: Editor) -> Editor {
     for i in 0..editor.height {
         let line = window.lines.get(i).unwrap_or(&placeholder);
         editor.buffer.extend(line.bytes());
-        
+
         if line.len() < editor.width {
             editor.buffer.extend(terminal::CLEAR_LINE);
         }
@@ -99,15 +115,26 @@ struct Editor {
     height: usize,
     buffer: Vec<u8>,
     document: Document,
+    error: Option<io::Error>,
 }
 
 impl Editor {
-    fn new(file: File) -> Editor {
-        Editor {
-            width: 0,
-            height: 0,
-            buffer: vec![],
-            document: Document::new(file),
+    fn new(filename: Option<String>) -> Editor {
+        match Document::new(filename) {
+            Ok(document) => Editor {
+                width: 0,
+                height: 0,
+                buffer: vec![],
+                document: document,
+                error: None,
+            },
+            Err(e) => Editor {
+                width: 0,
+                height: 0,
+                buffer: vec![],
+                document: Document::blank(),
+                error: Some(e),
+            },
         }
     }
 
@@ -142,12 +169,9 @@ impl Editor {
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    // TODO: handle no filename or non-existing file
-    let file = File::open(&args[1]).unwrap();
-
     let (read_input, write_output) = terminal::enter_raw_mode()?;
 
-    Editor::new(file).run(read_input, write_output)?;
+    Editor::new(args.get(1).cloned()).run(read_input, write_output)?;
 
     terminal::exit_raw_mode()?;
 
