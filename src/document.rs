@@ -260,4 +260,16 @@ impl Document {
 
         self
     }
+
+    pub fn end_of_line(mut self) -> Document {
+        self.cursor.x = self.current_line_len();
+
+        self
+    }
+
+    pub fn start_of_line(mut self) -> Document {
+        self.cursor.x = 0;
+
+        self
+    }
 }

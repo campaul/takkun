@@ -39,11 +39,9 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
             // TODO: reimplement
         }
         Event::Home => {
-            // TODO: reimplement
+            editor.document = editor.document.start_of_line();
         }
-        Event::End => {
-            // TODO: reimplement
-        }
+        Event::End => editor.document = editor.document.end_of_line(),
 
         Event::Delete => {
             editor.document = editor.document.delete_next();
