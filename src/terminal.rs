@@ -131,6 +131,7 @@ fn parse_escape(stdin: &mut io::Stdin) -> Event {
 
 fn process_keypress() -> Event {
     let mut stdin = io::stdin();
+    let mut stdout = io::stdout();
 
     loop {
         match read_char(&mut stdin) {
@@ -145,6 +146,18 @@ fn process_keypress() -> Event {
 
                 if c == ctrl('o') {
                     return Event::Save;
+                }
+
+                if c == ctrl('z') {
+                    stdout.write_all(b"\x1b[2J").unwrap();
+                    stdout.write_all(b"\x1b[H").unwrap();
+                    stdout.flush().unwrap();
+
+                    unsafe {
+                        libc::kill(std::process::id() as i32, libc::SIGTSTP);
+                    }
+
+                    return Event::Nothing;
                 }
 
                 if c == 13 as char {
@@ -210,14 +223,24 @@ pub fn get_window_size() -> io::Result<Event> {
     Ok(Event::Resize(size.ws_col as usize, size.ws_row as usize))
 }
 
-pub fn handle_resize() {
-    let write = PIPES[1];
+#[repr(u8)]
+pub enum Signal {
+    SIGWINCH,
+    SIGCONT,
+}
 
-    let buff: [u8; 1] = [0];
-
+pub fn handle_signal(signal: Signal) {
     unsafe {
-        libc::write(write, buff.as_ptr() as *mut libc::c_void, 1);
+        libc::write(PIPES[1], [signal].as_ptr() as *mut libc::c_void, 1);
     }
+}
+
+pub fn handle_resize() {
+    handle_signal(Signal::SIGWINCH);
+}
+
+pub fn handle_cont() {
+    handle_signal(Signal::SIGCONT);
 }
 
 fn write(buffer: &[u8]) -> io::Result<()> {
@@ -259,19 +282,33 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
         let read = PIPES[0];
 
         loop {
-            let buff: [u8; 1] = [0];
+            let buf: [u8; 1] = [0];
             // TODO: error handling
             unsafe {
-                libc::read(read, buff.as_ptr() as *mut libc::c_void, 1);
+                libc::read(read, buf.as_ptr() as *mut libc::c_void, 1);
             }
 
-            let size = get_window_size().unwrap();
-            signal_tx.send(size).unwrap();
+            let s: Signal = unsafe { std::mem::transmute(buf[0]) };
+
+            match s.try_into() {
+                Ok(Signal::SIGWINCH) => {
+                    let size = get_window_size().unwrap();
+                    signal_tx.send(size).unwrap();
+                }
+                Ok(Signal::SIGCONT) => {
+                    tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &raw_mode_termios(&TERMIOS)).unwrap();
+
+                    let size = get_window_size().unwrap();
+                    signal_tx.send(size).unwrap();
+                }
+                _ => {}
+            }
         }
     });
 
     unsafe {
         libc::signal(libc::SIGWINCH, handle_resize as libc::sighandler_t);
+        libc::signal(libc::SIGCONT, handle_cont as libc::sighandler_t);
     }
 
     let size = get_window_size().unwrap();
