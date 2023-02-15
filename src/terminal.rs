@@ -53,6 +53,7 @@ pub enum Event {
     Home,
     End,
 
+    Tab,
     Delete,
     Backspace,
     Escape,
@@ -152,6 +153,10 @@ fn process_keypress() -> Event {
 
                 if c == 127 as char {
                     return Event::Backspace;
+                }
+
+                if (c as u8) == 9 {
+                    return Event::Tab;
                 }
 
                 if (c as u8) > 31 && (c as u8) < 127 {

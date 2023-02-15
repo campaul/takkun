@@ -130,6 +130,16 @@ impl Document {
         self
     }
 
+    pub fn tab(self) -> Document {
+        let mut document = self;
+
+        for _ in 0..4 {
+            document = document.insert(" ".to_string());
+        }
+
+        document
+    }
+
     pub fn save(&self) -> std::io::Result<()> {
         let mut out = String::new();
 

@@ -43,6 +43,9 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
         }
         Event::End => editor.document = editor.document.end_of_line(),
 
+        Event::Tab => {
+            editor.document = editor.document.tab();
+        }
         Event::Delete => {
             editor.document = editor.document.delete_next();
         }
