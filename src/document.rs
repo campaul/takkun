@@ -30,8 +30,8 @@ pub struct Cursor {
 pub struct Document {
     rows: Vec<String>,
     window_offset: usize,
-    cursor: Cursor,
-    filename: Option<String>,
+    pub cursor: Cursor,
+    pub filename: Option<String>,
 }
 
 pub struct Window {

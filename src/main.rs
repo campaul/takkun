@@ -76,12 +76,32 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
     editor
 }
 
+fn row(text: String, width: usize) -> String {
+    let left = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
+    let right = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
+    let mut pad = String::new();
+
+    if text.len() + left.len() + right.len() < width {
+        pad = " ".to_string();
+    }
+
+    format!("\x1b[7m{}{}{}{}\x1b[m", left, text, right, pad)
+}
+
 fn draw_rows(mut editor: Editor) -> Editor {
-    let window = editor.document.window(editor.width, editor.height);
+    if editor.height == 0 {
+        return editor;
+    }
+
+    let window = editor.document.window(editor.width, editor.height - 2);
     let placeholder = String::from("~");
 
-    for i in 0..editor.height {
-        let line = window.lines.get(i).unwrap_or(&placeholder);
+    let name = editor.document.filename.clone().unwrap_or("New File".to_string());
+    editor.buffer.extend(row(name, editor.width).bytes());
+    editor.buffer.extend(b"\r\n");
+
+    for i in 1..editor.height - 1 {
+        let line = window.lines.get(i-1).unwrap_or(&placeholder);
         editor.buffer.extend(line.bytes());
 
         if line.len() < editor.width {
@@ -93,7 +113,13 @@ fn draw_rows(mut editor: Editor) -> Editor {
         }
     }
 
-    editor.buffer.extend(position_cursor!(window.cursor));
+    let status = format!("Line: {}, Column: {}", editor.document.cursor.y + 1, editor.document.cursor.x + 1);
+    editor.buffer.extend(row(status, editor.width).bytes());
+
+    editor.buffer.extend(position_cursor!(document::Cursor {
+        x: window.cursor.x,
+        y: window.cursor.y + 1,
+    }));
 
     editor
 }
