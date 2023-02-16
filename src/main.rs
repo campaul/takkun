@@ -76,7 +76,7 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
     editor
 }
 
-fn row(text: String, width: usize) -> String {
+fn header(text: String, width: usize) -> String {
     let left = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
     let right = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
     let mut pad = String::new();
@@ -85,7 +85,13 @@ fn row(text: String, width: usize) -> String {
         pad = " ".to_string();
     }
 
-    format!("\x1b[7m{}{}{}{}\x1b[m", left, text, right, pad)
+    format!("\x1b[7m{}{}{}{}\x1b[m\r\n", left, text, right, pad)
+}
+
+fn footer(status: String, row: usize, col: usize, width: usize) -> String {
+    let position = format!("{}:{}", col + 1, row + 1);
+    let padding = String::from_utf8(vec![b' '; width - status.len() - position.len() - 2]).unwrap();
+    format!("\x1b[7m {}{}{} \x1b[m", status, padding, position)
 }
 
 fn draw_rows(mut editor: Editor) -> Editor {
@@ -97,8 +103,7 @@ fn draw_rows(mut editor: Editor) -> Editor {
     let placeholder = String::from("~");
 
     let name = editor.document.filename.clone().unwrap_or("New File".to_string());
-    editor.buffer.extend(row(name, editor.width).bytes());
-    editor.buffer.extend(b"\r\n");
+    editor.buffer.extend(header(name, editor.width).bytes());
 
     for i in 1..editor.height - 1 {
         let line = window.lines.get(i-1).unwrap_or(&placeholder);
@@ -113,8 +118,8 @@ fn draw_rows(mut editor: Editor) -> Editor {
         }
     }
 
-    let status = format!("Line: {}, Column: {}", editor.document.cursor.y + 1, editor.document.cursor.x + 1);
-    editor.buffer.extend(row(status, editor.width).bytes());
+    let status = "".to_string();
+    editor.buffer.extend(footer(status, editor.document.cursor.x, editor.document.cursor.y, editor.width).bytes());
 
     editor.buffer.extend(position_cursor!(document::Cursor {
         x: window.cursor.x,
