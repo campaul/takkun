@@ -147,6 +147,10 @@ fn process_keypress() -> Event {
                     return Event::Control("s".to_string());
                 }
 
+                if c == ctrl('f') {
+                    return Event::Control("f".to_string());
+                }
+
                 if c == ctrl('z') {
                     stdout.write_all(b"\x1b[2J").unwrap();
                     stdout.write_all(b"\x1b[H").unwrap();

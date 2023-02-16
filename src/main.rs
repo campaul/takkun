@@ -13,22 +13,43 @@ use std::io;
 use document::Document;
 use terminal::Event;
 
+fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
+    match event {
+        Event::Input(c) => {
+            editor.search = Some(format!("{}{}", editor.search.unwrap_or("".to_string()), c))
+        }
+        Event::Enter => {
+            let search = editor.search.clone().unwrap_or(String::new());
+            editor.document = editor.document.find_next(search);
+        }
+        Event::Escape => {
+            editor.search = None;
+        }
+        _ => {}
+    }
+
+    Some(editor)
+}
+
 fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
+    if let Some(_) = &editor.search {
+        return process_search(editor, event);
+    }
+
     match event {
         Event::Input(c) => {
             editor.document = editor.document.insert(c);
         }
-        Event::Control(c) => {
-            match c.as_str() {
-                "o" => {
-                    if let Err(e) = editor.document.save() {
-                        editor.error = Some(e);
-                    }
-                },
-                "q" => { return None },
-                _ => {},
+        Event::Control(c) => match c.as_str() {
+            "o" => {
+                if let Err(e) = editor.document.save() {
+                    editor.error = Some(e);
+                }
             }
-        }
+            "q" => return None,
+            "f" => editor.search = Some(String::new()),
+            _ => {}
+        },
 
         Event::Up => {
             editor.document = editor.document.up(editor.width);
@@ -107,11 +128,15 @@ fn draw_rows(mut editor: Editor) -> Editor {
     let window = editor.document.window(editor.width, editor.height - 2);
     let placeholder = String::from("~");
 
-    let name = editor.document.filename.clone().unwrap_or("New File".to_string());
+    let name = editor
+        .document
+        .filename
+        .clone()
+        .unwrap_or("New File".to_string());
     editor.buffer.extend(header(name, editor.width).bytes());
 
     for i in 1..editor.height - 1 {
-        let line = window.lines.get(i-1).unwrap_or(&placeholder);
+        let line = window.lines.get(i - 1).unwrap_or(&placeholder);
         editor.buffer.extend(line.bytes());
 
         if line.len() < editor.width {
@@ -123,8 +148,19 @@ fn draw_rows(mut editor: Editor) -> Editor {
         }
     }
 
-    let status = "".to_string();
-    editor.buffer.extend(footer(status, editor.document.cursor.x, editor.document.cursor.y, editor.width).bytes());
+    let status = match &editor.search {
+        Some(s) => format!("FIND: {}", s),
+        None => String::new(),
+    };
+    editor.buffer.extend(
+        footer(
+            status,
+            editor.document.cursor.x,
+            editor.document.cursor.y,
+            editor.width,
+        )
+        .bytes(),
+    );
 
     editor.buffer.extend(position_cursor!(document::Cursor {
         x: window.cursor.x,
@@ -153,6 +189,7 @@ struct Editor {
     buffer: Vec<u8>,
     document: Document,
     error: Option<io::Error>,
+    search: Option<String>,
 }
 
 impl Editor {
@@ -164,6 +201,7 @@ impl Editor {
                 buffer: vec![],
                 document: document,
                 error: None,
+                search: None,
             },
             Err(e) => Editor {
                 width: 0,
@@ -171,6 +209,7 @@ impl Editor {
                 buffer: vec![],
                 document: Document::blank(),
                 error: Some(e),
+                search: None,
             },
         }
     }

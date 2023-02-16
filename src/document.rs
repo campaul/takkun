@@ -282,4 +282,33 @@ impl Document {
 
         self
     }
+
+    pub fn find_next(mut self, text: String) -> Document {
+        let mut matches: Vec<(usize, usize)> = vec![];
+
+        for i in 0..self.rows.len() {
+            for m in self.rows[i].match_indices(&text) {
+                matches.push((m.0, i));
+            }
+        }
+
+        if matches.len() > 0 {
+            let mut next = matches[0];
+
+            for m in matches {
+                if m.1 == self.cursor.y && m.0 > self.cursor.x {
+                    next = m;
+                    break;
+                } else if m.1 > self.cursor.y {
+                    next = m;
+                    break;
+                }
+            }
+
+            self.cursor.x = next.0;
+            self.cursor.y = next.1;
+        }
+
+        self
+    }
 }
