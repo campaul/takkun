@@ -13,10 +13,21 @@ use std::io;
 use document::Document;
 use terminal::Event;
 
-fn process_event(mut editor: Editor, event: Event) -> Editor {
+fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
     match event {
         Event::Input(c) => {
             editor.document = editor.document.insert(c);
+        }
+        Event::Control(c) => {
+            match c.as_str() {
+                "o" => {
+                    if let Err(e) = editor.document.save() {
+                        editor.error = Some(e);
+                    }
+                },
+                "q" => { return None },
+                _ => {},
+            }
         }
 
         Event::Up => {
@@ -64,16 +75,10 @@ fn process_event(mut editor: Editor, event: Event) -> Editor {
             editor.height = height;
         }
 
-        Event::Exit => {}
-        Event::Save => {
-            if let Err(e) = editor.document.save() {
-                editor.error = Some(e);
-            }
-        }
         Event::Error(_) => {}
     }
 
-    editor
+    Some(editor)
 }
 
 fn header(text: String, width: usize) -> String {
@@ -170,7 +175,7 @@ impl Editor {
         }
     }
 
-    fn update(self, event: Event) -> Editor {
+    fn update(self, event: Event) -> Option<Editor> {
         process_event(self, event)
     }
 
@@ -188,10 +193,10 @@ impl Editor {
 
             let event = read();
 
-            match event {
-                Event::Exit => break,
-                _ => editor = editor.update(event),
-            };
+            match editor.update(event) {
+                Some(e) => editor = e,
+                None => break,
+            }
         }
 
         Ok(())

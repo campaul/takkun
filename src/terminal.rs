@@ -41,6 +41,7 @@ lazy_static! {
 
 pub enum Event {
     Input(String),
+    Control(String),
 
     Up,
     Down,
@@ -63,8 +64,6 @@ pub enum Event {
 
     Resize(usize, usize),
 
-    Exit,
-    Save,
     Error(String),
 }
 
@@ -141,11 +140,11 @@ fn process_keypress() -> Event {
                 }
 
                 if c == ctrl('q') {
-                    return Event::Exit;
+                    return Event::Control("q".to_string());
                 }
 
                 if c == ctrl('o') {
-                    return Event::Save;
+                    return Event::Control("s".to_string());
                 }
 
                 if c == ctrl('z') {
