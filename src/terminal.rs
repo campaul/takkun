@@ -144,7 +144,7 @@ fn process_keypress() -> Event {
                 }
 
                 if c == ctrl('o') {
-                    return Event::Control("s".to_string());
+                    return Event::Control("o".to_string());
                 }
 
                 if c == ctrl('f') {
