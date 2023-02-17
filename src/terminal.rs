@@ -62,6 +62,9 @@ pub enum Event {
 
     Nothing,
 
+    Pause,
+    Resume,
+
     Resize(usize, usize),
 
     Error(String),
@@ -152,15 +155,14 @@ fn process_keypress() -> Event {
                 }
 
                 if c == ctrl('z') {
-                    stdout.write_all(b"\x1b[2J").unwrap();
-                    stdout.write_all(b"\x1b[H").unwrap();
+                    exit_alternate_buffer(&mut stdout).unwrap();
                     stdout.flush().unwrap();
 
                     unsafe {
                         libc::kill(std::process::id() as i32, libc::SIGTSTP);
                     }
 
-                    return Event::Nothing;
+                    return Event::Pause;
                 }
 
                 if c == 13 as char {
@@ -260,8 +262,22 @@ fn write(buffer: &[u8]) -> io::Result<()> {
 pub type In = impl Fn() -> Event;
 pub type Out = impl Fn(&[u8]) -> io::Result<()>;
 
+pub fn enter_alternate_buffer(stdout: &mut io::Stdout) -> io::Result<()> {
+    stdout.write_all(b"\x1b[?1049h\033[2J\x1b[H")?;
+    stdout.flush()?;
+    Ok(())
+}
+
+pub fn exit_alternate_buffer(stdout: &mut io::Stdout) -> io::Result<()> {
+    stdout.write_all(b"\x1b[2J\x1b[H\x1b[?1049l")?;
+    stdout.flush()?;
+    Ok(())
+}
+
 pub fn enter_raw_mode() -> io::Result<(In, Out)> {
-    let stdout = io::stdout();
+    let mut stdout = io::stdout();
+
+    enter_alternate_buffer(&mut stdout)?;
 
     tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &raw_mode_termios(&TERMIOS))?;
 
@@ -299,8 +315,10 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
                     signal_tx.send(size).unwrap();
                 }
                 Ok(Signal::SIGCONT) => {
+                    enter_alternate_buffer(&mut stdout).unwrap();
                     tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &raw_mode_termios(&TERMIOS)).unwrap();
 
+                    signal_tx.send(Event::Resume).unwrap();
                     let size = get_window_size().unwrap();
                     signal_tx.send(size).unwrap();
                 }
@@ -328,11 +346,8 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
 pub fn exit_raw_mode() -> io::Result<()> {
     let mut stdout = io::stdout();
 
-    stdout.write_all(b"\x1b[2J")?;
-    stdout.write_all(b"\x1b[H")?;
-
     tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &TERMIOS)?;
-
+    exit_alternate_buffer(&mut stdout)?;
     stdout.flush()?;
 
     Ok(())

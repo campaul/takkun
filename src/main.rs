@@ -89,14 +89,14 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
             editor.document = editor.document.insert_line();
         }
 
-        Event::Nothing => {}
-
         Event::Resize(width, height) => {
             editor.width = width;
             editor.height = height;
         }
 
         Event::Error(_) => {}
+
+        _ => {}
     }
 
     Some(editor)
@@ -224,13 +224,22 @@ impl Editor {
 
     fn run(self, read: terminal::In, write: terminal::Out) -> io::Result<()> {
         let mut editor = self;
+        let mut paused = false;
 
         loop {
             editor = editor.draw();
 
-            write(&editor.buffer)?;
+            if !paused {
+                write(&editor.buffer)?;
+            }
 
             let event = read();
+
+            match event {
+                Event::Pause => paused = true,
+                Event::Resume => paused = false,
+                _ => {}
+            }
 
             match editor.update(event) {
                 Some(e) => editor = e,
