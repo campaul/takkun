@@ -20,7 +20,10 @@ fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
         }
         Event::Enter => {
             let search = editor.search.clone().unwrap_or(String::new());
-            editor.document = editor.document.find_next(search);
+
+            if search.len() != 0 {
+                editor.document = editor.document.find_next(search);
+            }
         }
         Event::Escape => {
             editor.search = None;
