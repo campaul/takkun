@@ -86,7 +86,8 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
             editor.document = editor.document.insert_line();
         }
 
-        Event::Resize(width, height) => {
+        Event::Resize => {
+            let (width, height) = terminal::get_window_size().unwrap();
             editor.width = width;
             editor.height = height;
         }
@@ -233,8 +234,14 @@ impl Editor {
             let event = read();
 
             match event {
-                Event::Pause => paused = true,
-                Event::Resume => paused = false,
+                Event::Pause => {
+                    paused = true;
+                    terminal::pause().unwrap();
+                }
+                Event::Resume => {
+                    paused = false;
+                    terminal::resume().unwrap();
+                }
                 _ => {}
             }
 
@@ -251,11 +258,11 @@ impl Editor {
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    let (read_input, write_output) = terminal::enter_raw_mode()?;
+    let (read_input, write_output) = terminal::init()?;
 
     Editor::new(args.get(1).cloned()).run(read_input, write_output)?;
 
-    terminal::exit_raw_mode()?;
+    terminal::exit()?;
 
     Ok(())
 }

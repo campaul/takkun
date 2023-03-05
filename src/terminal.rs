@@ -56,7 +56,7 @@ pub enum Event {
     Pause,
     Resume,
 
-    Resize(usize, usize),
+    Resize,
 
     Error(String),
 }
@@ -124,7 +124,6 @@ fn parse_escape(stdin: &mut io::Stdin) -> Event {
 
 fn process_keypress() -> Event {
     let mut stdin = io::stdin();
-    let mut stdout = io::stdout();
 
     match read_char(&mut stdin) {
         Ok(c) => {
@@ -145,13 +144,6 @@ fn process_keypress() -> Event {
             }
 
             if c == ctrl('z') {
-                exit_alternate_buffer(&mut stdout).unwrap();
-                stdout.flush().unwrap();
-
-                unsafe {
-                    libc::kill(std::process::id() as i32, libc::SIGTSTP);
-                }
-
                 return Event::Pause;
             }
 
@@ -188,7 +180,7 @@ pub fn raw_mode_termios(termios: &libc::termios) -> libc::termios {
     raw_termios
 }
 
-pub fn get_window_size() -> io::Result<Event> {
+pub fn get_window_size() -> io::Result<(usize, usize)> {
     let stdout = io::stdout();
 
     let size = libc::winsize {
@@ -209,7 +201,7 @@ pub fn get_window_size() -> io::Result<Event> {
         }
     }
 
-    Ok(Event::Resize(size.ws_col as usize, size.ws_row as usize))
+    Ok((size.ws_col as usize, size.ws_row as usize))
 }
 
 #[repr(u8)]
@@ -224,11 +216,11 @@ pub fn handle_signal(signal: Signal) {
     }
 }
 
-pub fn handle_resize() {
+fn handle_resize() {
     handle_signal(Signal::SIGWINCH);
 }
 
-pub fn handle_cont() {
+fn handle_cont() {
     handle_signal(Signal::SIGCONT);
 }
 
@@ -246,37 +238,35 @@ fn write(buffer: &[u8]) -> io::Result<()> {
 pub type In = impl Fn() -> Event;
 pub type Out = impl Fn(&[u8]) -> io::Result<()>;
 
-pub fn enter_alternate_buffer(stdout: &mut io::Stdout) -> io::Result<()> {
+pub fn enter_alternate_buffer() -> io::Result<()> {
+    let mut stdout = io::stdout();
     stdout.write_all(b"\x1b[?1049h\033[2J\x1b[H")?;
     stdout.flush()?;
     Ok(())
 }
 
-pub fn exit_alternate_buffer(stdout: &mut io::Stdout) -> io::Result<()> {
+pub fn exit_alternate_buffer() -> io::Result<()> {
+    let mut stdout = io::stdout();
     stdout.write_all(b"\x1b[2J\x1b[H\x1b[?1049l")?;
     stdout.flush()?;
     Ok(())
 }
 
-pub fn enter_raw_mode() -> io::Result<(In, Out)> {
-    let mut stdout = io::stdout();
+pub fn init() -> io::Result<(In, Out)> {
+    let stdout = io::stdout();
 
     unsafe {
-        // TODO: error handling
         libc::tcgetattr(stdout.as_raw_fd(), &mut TERMIOS);
         libc::pipe(PIPES.as_mut_ptr());
-        libc::tcsetattr(
-            stdout.as_raw_fd(),
-            libc::TCSAFLUSH,
-            &raw_mode_termios(&TERMIOS),
-        );
     }
-    enter_alternate_buffer(&mut stdout)?;
+
+    enter_alternate_buffer()?;
+    enter_raw_mode()?;
 
     let default_panic_hook = panic::take_hook();
 
     panic::set_hook(Box::new(move |info| {
-        exit_raw_mode().unwrap();
+        exit().unwrap();
         default_panic_hook(info);
     }));
 
@@ -301,23 +291,11 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
 
             match s.try_into() {
                 Ok(Signal::SIGWINCH) => {
-                    let size = get_window_size().unwrap();
-                    signal_tx.send(size).unwrap();
+                    signal_tx.send(Event::Resize).unwrap();
                 }
                 Ok(Signal::SIGCONT) => {
-                    enter_alternate_buffer(&mut stdout).unwrap();
-
-                    unsafe {
-                        // TODO: error handling
-                        libc::tcsetattr(
-                            stdout.as_raw_fd(),
-                            libc::TCSAFLUSH,
-                            &raw_mode_termios(&TERMIOS),
-                        );
-                    }
                     signal_tx.send(Event::Resume).unwrap();
-                    let size = get_window_size().unwrap();
-                    signal_tx.send(size).unwrap();
+                    signal_tx.send(Event::Resize).unwrap();
                 }
                 _ => {}
             }
@@ -329,8 +307,7 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
         libc::signal(libc::SIGCONT, handle_cont as libc::sighandler_t);
     }
 
-    let size = get_window_size().unwrap();
-    tx.send(size).unwrap();
+    tx.send(Event::Resize).unwrap();
 
     let read = move || match rx.recv() {
         Ok(e) => e,
@@ -340,15 +317,53 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
     Ok((read, write))
 }
 
-pub fn exit_raw_mode() -> io::Result<()> {
-    let mut stdout = io::stdout();
+pub fn exit() -> io::Result<()> {
+    exit_raw_mode()?;
+    exit_alternate_buffer()?;
 
-    exit_alternate_buffer(&mut stdout)?;
+    Ok(())
+}
+
+pub fn enter_raw_mode() -> io::Result<()> {
+    let stdout = io::stdout();
+
+    unsafe {
+        // TODO: error handling
+        libc::tcsetattr(
+            stdout.as_raw_fd(),
+            libc::TCSAFLUSH,
+            &raw_mode_termios(&TERMIOS),
+        );
+    }
+
+    Ok(())
+}
+
+pub fn exit_raw_mode() -> io::Result<()> {
+    let stdout = io::stdout();
+
     unsafe {
         // TODO: error handling
         libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, &TERMIOS);
     }
-    stdout.flush()?;
+
+    Ok(())
+}
+
+pub fn pause() -> io::Result<()> {
+    exit_raw_mode().unwrap();
+    exit_alternate_buffer().unwrap();
+
+    unsafe {
+        libc::kill(std::process::id() as i32, libc::SIGTSTP);
+    }
+
+    Ok(())
+}
+
+pub fn resume() -> io::Result<()> {
+    enter_alternate_buffer()?;
+    enter_raw_mode()?;
 
     Ok(())
 }
