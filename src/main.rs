@@ -86,6 +86,15 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
             editor.document = editor.document.insert_line();
         }
 
+        Event::Pause => {
+            editor.paused = true;
+            terminal::pause().unwrap();
+        }
+        Event::Resume => {
+            editor.paused = false;
+            terminal::resume().unwrap();
+        }
+
         Event::Resize => {
             let (width, height) = terminal::get_window_size().unwrap();
             editor.width = width;
@@ -188,6 +197,7 @@ struct Editor {
     document: Document,
     error: Option<io::Error>,
     search: Option<String>,
+    paused: bool,
 }
 
 impl Editor {
@@ -200,6 +210,7 @@ impl Editor {
                 document: document,
                 error: None,
                 search: None,
+                paused: false,
             },
             Err(e) => Editor {
                 width: 0,
@@ -208,6 +219,7 @@ impl Editor {
                 document: Document::blank(),
                 error: Some(e),
                 search: None,
+                paused: false,
             },
         }
     }
@@ -222,30 +234,15 @@ impl Editor {
 
     fn run(self, read: terminal::In, write: terminal::Out) -> io::Result<()> {
         let mut editor = self;
-        let mut paused = false;
 
         loop {
             editor = editor.draw();
 
-            if !paused {
+            if !editor.paused {
                 write(&editor.buffer)?;
             }
 
-            let event = read();
-
-            match event {
-                Event::Pause => {
-                    paused = true;
-                    terminal::pause().unwrap();
-                }
-                Event::Resume => {
-                    paused = false;
-                    terminal::resume().unwrap();
-                }
-                _ => {}
-            }
-
-            match editor.update(event) {
+            match editor.update(read()) {
                 Some(e) => editor = e,
                 None => break,
             }
