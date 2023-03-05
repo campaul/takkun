@@ -1,6 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 mod document;
+mod style;
 #[macro_use]
 mod terminal;
 
@@ -8,6 +9,8 @@ use std::env;
 use std::io;
 
 use document::Document;
+use style::styled;
+use style::Style;
 use terminal::Event;
 
 fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
@@ -109,7 +112,7 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
     Some(editor)
 }
 
-fn header(text: String, width: usize) -> String {
+fn header(text: String, width: usize, style: Style) -> String {
     let left = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
     let right = String::from_utf8(vec![b' '; (width - text.len()) / 2]).unwrap();
     let mut pad = String::new();
@@ -118,19 +121,36 @@ fn header(text: String, width: usize) -> String {
         pad = " ".to_string();
     }
 
-    format!("\x1b[7m{}{}{}{}\x1b[m\r\n", left, text, right, pad)
+    styled(style, format!("{}{}{}{}\r\n", left, text, right, pad))
 }
 
-fn footer(status: String, row: usize, col: usize, width: usize) -> String {
+fn footer(status: String, row: usize, col: usize, width: usize, style: Style) -> String {
     let position = format!("{}:{}", col + 1, row + 1);
     let padding = String::from_utf8(vec![b' '; width - status.len() - position.len() - 2]).unwrap();
-    format!("\x1b[7m {}{}{} \x1b[m", status, padding, position)
+
+    styled(style, format!(" {}{}{} ", status, padding, position))
 }
 
 fn draw_rows(mut editor: Editor) -> Editor {
     if editor.height == 0 {
         return editor;
     }
+
+    let header_style = Style {
+        foreground: 0,
+        background: 7,
+    };
+
+    let footer_style = match editor.search {
+        Some(_) => Style {
+            foreground: 7,
+            background: 12,
+        },
+        None => Style {
+            foreground: 0,
+            background: 7,
+        },
+    };
 
     let window = editor.document.window(editor.width, editor.height - 2);
     let placeholder = String::from("~");
@@ -140,7 +160,9 @@ fn draw_rows(mut editor: Editor) -> Editor {
         .filename
         .clone()
         .unwrap_or("New File".to_string());
-    editor.buffer.extend(header(name, editor.width).bytes());
+    editor
+        .buffer
+        .extend(header(name, editor.width, header_style).bytes());
 
     for i in 1..editor.height - 1 {
         let line = window.lines.get(i - 1).unwrap_or(&placeholder);
@@ -165,6 +187,7 @@ fn draw_rows(mut editor: Editor) -> Editor {
             editor.document.cursor.x,
             editor.document.cursor.y,
             editor.width,
+            footer_style,
         )
         .bytes(),
     );
