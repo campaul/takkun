@@ -165,7 +165,11 @@ fn process_keypress() -> Event {
 
             return Event::Nothing;
         }
-        Err(e) => return Event::Error(e.to_string()),
+
+        Err(e) => match e.kind() {
+            ErrorKind::UnexpectedEof => Event::Nothing,
+            _ => return Event::Error(e.to_string()),
+        },
     }
 }
 
@@ -176,6 +180,8 @@ pub fn raw_mode_termios(termios: &libc::termios) -> libc::termios {
     raw_termios.c_oflag &= !(libc::OPOST);
     raw_termios.c_cflag |= libc::CS8;
     raw_termios.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
+    raw_termios.c_cc[libc::VMIN] = 0;
+    raw_termios.c_cc[libc::VTIME] = 1;
 
     raw_termios
 }
