@@ -126,56 +126,54 @@ fn process_keypress() -> Event {
     let mut stdin = io::stdin();
     let mut stdout = io::stdout();
 
-    loop {
-        match read_char(&mut stdin) {
-            Ok(c) => {
-                if c == '\x1b' {
-                    return parse_escape(&mut stdin);
-                }
-
-                if c == ctrl('q') {
-                    return Event::Control("q".to_string());
-                }
-
-                if c == ctrl('o') {
-                    return Event::Control("o".to_string());
-                }
-
-                if c == ctrl('f') {
-                    return Event::Control("f".to_string());
-                }
-
-                if c == ctrl('z') {
-                    exit_alternate_buffer(&mut stdout).unwrap();
-                    stdout.flush().unwrap();
-
-                    unsafe {
-                        libc::kill(std::process::id() as i32, libc::SIGTSTP);
-                    }
-
-                    return Event::Pause;
-                }
-
-                if c == 13 as char {
-                    return Event::Enter;
-                }
-
-                if c == 127 as char {
-                    return Event::Backspace;
-                }
-
-                if (c as u8) == 9 {
-                    return Event::Tab;
-                }
-
-                if (c as u8) > 31 && (c as u8) < 127 {
-                    return Event::Input(c.to_string());
-                }
-
-                return Event::Nothing;
+    match read_char(&mut stdin) {
+        Ok(c) => {
+            if c == '\x1b' {
+                return parse_escape(&mut stdin);
             }
-            Err(e) => return Event::Error(e.to_string()),
+
+            if c == ctrl('q') {
+                return Event::Control("q".to_string());
+            }
+
+            if c == ctrl('o') {
+                return Event::Control("o".to_string());
+            }
+
+            if c == ctrl('f') {
+                return Event::Control("f".to_string());
+            }
+
+            if c == ctrl('z') {
+                exit_alternate_buffer(&mut stdout).unwrap();
+                stdout.flush().unwrap();
+
+                unsafe {
+                    libc::kill(std::process::id() as i32, libc::SIGTSTP);
+                }
+
+                return Event::Pause;
+            }
+
+            if c == 13 as char {
+                return Event::Enter;
+            }
+
+            if c == 127 as char {
+                return Event::Backspace;
+            }
+
+            if (c as u8) == 9 {
+                return Event::Tab;
+            }
+
+            if (c as u8) > 31 && (c as u8) < 127 {
+                return Event::Input(c.to_string());
+            }
+
+            return Event::Nothing;
         }
+        Err(e) => return Event::Error(e.to_string()),
     }
 }
 
