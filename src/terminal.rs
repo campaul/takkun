@@ -18,40 +18,17 @@ macro_rules! position_cursor {
     };
 }
 
-lazy_static! {
-    // TODO: error handling
-    static ref TERMIOS: libc::termios = (|| {
-        let mut t = libc::termios {
-            c_iflag: 0,
-            c_oflag: 0,
-            c_cflag: 0,
-            c_lflag: 0,
-            c_cc: [0; 32],
-            c_ispeed: 0,
-            c_ospeed: 0,
-            c_line: 0,
-        };
-        let fileno = io::stdout().as_raw_fd();
-
-        unsafe {
-            // TODO: error handling
-            libc::tcgetattr(fileno, &mut t);
-        }
-
-        t
-    })();
-
-    static ref PIPES: [i32; 2] = (|| {
-        let mut fds = [0; 2];
-
-        unsafe {
-            // TODO: error handling
-            libc::pipe(fds.as_mut_ptr());
-        }
-
-        fds
-    })();
-}
+static mut PIPES: [i32; 2] = [0; 2];
+static mut TERMIOS: libc::termios = libc::termios {
+    c_iflag: 0,
+    c_oflag: 0,
+    c_cflag: 0,
+    c_lflag: 0,
+    c_cc: [0; 32],
+    c_ispeed: 0,
+    c_ospeed: 0,
+    c_line: 0,
+};
 
 pub enum Event {
     Input(String),
@@ -288,6 +265,8 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
 
     unsafe {
         // TODO: error handling
+        libc::tcgetattr(stdout.as_raw_fd(), &mut TERMIOS);
+        libc::pipe(PIPES.as_mut_ptr());
         libc::tcsetattr(
             stdout.as_raw_fd(),
             libc::TCSAFLUSH,
@@ -313,13 +292,11 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
     });
 
     thread::spawn(move || {
-        let read = PIPES[0];
-
         loop {
             let buf: [u8; 1] = [0];
             // TODO: error handling
             unsafe {
-                libc::read(read, buf.as_ptr() as *mut libc::c_void, 1);
+                libc::read(PIPES[0], buf.as_ptr() as *mut libc::c_void, 1);
             }
 
             let s: Signal = unsafe { std::mem::transmute(buf[0]) };
@@ -371,7 +348,7 @@ pub fn exit_raw_mode() -> io::Result<()> {
     exit_alternate_buffer(&mut stdout)?;
     unsafe {
         // TODO: error handling
-        libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, &*TERMIOS);
+        libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, &TERMIOS);
     }
     stdout.flush()?;
 

@@ -1,8 +1,5 @@
 #![feature(type_alias_impl_trait)]
 
-#[macro_use]
-extern crate lazy_static;
-
 mod document;
 #[macro_use]
 mod terminal;
