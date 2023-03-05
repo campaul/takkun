@@ -197,6 +197,7 @@ pub fn get_window_size() -> io::Result<(usize, usize)> {
     };
 
     unsafe {
+        // TODO: error handling
         let status = libc::ioctl(stdout.as_raw_fd(), libc::TIOCGWINSZ, &size);
 
         if status == -1 {
@@ -218,6 +219,7 @@ pub enum Signal {
 
 pub fn handle_signal(signal: Signal) {
     unsafe {
+        // TODO: error handling
         libc::write(PIPES[1], [signal].as_ptr() as *mut libc::c_void, 1);
     }
 }
@@ -262,6 +264,7 @@ pub fn init() -> io::Result<(In, Out)> {
     let stdout = io::stdout();
 
     unsafe {
+        // TODO: error handling
         libc::tcgetattr(stdout.as_raw_fd(), &mut TERMIOS);
         libc::pipe(PIPES.as_mut_ptr());
     }
@@ -309,6 +312,7 @@ pub fn init() -> io::Result<(In, Out)> {
     });
 
     unsafe {
+        // TODO: error handling
         libc::signal(libc::SIGWINCH, handle_resize as libc::sighandler_t);
         libc::signal(libc::SIGCONT, handle_cont as libc::sighandler_t);
     }
@@ -361,6 +365,7 @@ pub fn pause() -> io::Result<()> {
     exit_alternate_buffer().unwrap();
 
     unsafe {
+        // TODO: error handling
         libc::kill(std::process::id() as i32, libc::SIGTSTP);
     }
 
