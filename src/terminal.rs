@@ -7,9 +7,6 @@ use std::panic;
 use std::sync::mpsc;
 use std::thread;
 
-// TODO: use libc instead of termios
-use termios::*;
-
 pub const HIDE_CURSOR: &[u8; 6] = b"\x1b[?25l";
 pub const SHOW_CURSOR: &[u8; 6] = b"\x1b[?25h";
 pub const ZERO_CURSOR: &[u8; 3] = b"\x1b[H";
@@ -23,9 +20,26 @@ macro_rules! position_cursor {
 
 lazy_static! {
     // TODO: error handling
-    static ref TERMIOS: termios::Termios = Termios::from_fd(
-        io::stdout().as_raw_fd()
-    ).unwrap();
+    static ref TERMIOS: libc::termios = (|| {
+        let mut t = libc::termios {
+            c_iflag: 0,
+            c_oflag: 0,
+            c_cflag: 0,
+            c_lflag: 0,
+            c_cc: [0; 32],
+            c_ispeed: 0,
+            c_ospeed: 0,
+            c_line: 0,
+        };
+        let fileno = io::stdout().as_raw_fd();
+
+        unsafe {
+            // TODO: error handling
+            libc::tcgetattr(fileno, &mut t);
+        }
+
+        t
+    })();
 
     static ref PIPES: [i32; 2] = (|| {
         let mut fds = [0; 2];
@@ -184,22 +198,24 @@ fn process_keypress() -> Event {
                 return Event::Nothing;
             }
             Err(e) => match e.kind() {
-                ErrorKind::UnexpectedEof => {}
+                ErrorKind::UnexpectedEof => {
+                    // TODO: this is ok because the loop will try again
+                }
                 _ => return Event::Error(e.to_string()),
             },
         }
     }
 }
 
-pub fn raw_mode_termios(termios: &Termios) -> Termios {
+pub fn raw_mode_termios(termios: &libc::termios) -> libc::termios {
     let mut raw_termios = termios.clone();
 
-    raw_termios.c_iflag &= !(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    raw_termios.c_oflag &= !(OPOST);
-    raw_termios.c_cflag |= CS8;
-    raw_termios.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
-    raw_termios.c_cc[VMIN] = 0;
-    raw_termios.c_cc[VTIME] = 1;
+    raw_termios.c_iflag &= !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
+    raw_termios.c_oflag &= !(libc::OPOST);
+    raw_termios.c_cflag |= libc::CS8;
+    raw_termios.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
+    raw_termios.c_cc[libc::VMIN] = 0;
+    raw_termios.c_cc[libc::VTIME] = 1;
 
     raw_termios
 }
@@ -277,9 +293,15 @@ pub fn exit_alternate_buffer(stdout: &mut io::Stdout) -> io::Result<()> {
 pub fn enter_raw_mode() -> io::Result<(In, Out)> {
     let mut stdout = io::stdout();
 
+    unsafe {
+        // TODO: error handling
+        libc::tcsetattr(
+            stdout.as_raw_fd(),
+            libc::TCSAFLUSH,
+            &raw_mode_termios(&TERMIOS),
+        );
+    }
     enter_alternate_buffer(&mut stdout)?;
-
-    tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &raw_mode_termios(&TERMIOS))?;
 
     let default_panic_hook = panic::take_hook();
 
@@ -316,8 +338,15 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
                 }
                 Ok(Signal::SIGCONT) => {
                     enter_alternate_buffer(&mut stdout).unwrap();
-                    tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &raw_mode_termios(&TERMIOS)).unwrap();
 
+                    unsafe {
+                        // TODO: error handling
+                        libc::tcsetattr(
+                            stdout.as_raw_fd(),
+                            libc::TCSAFLUSH,
+                            &raw_mode_termios(&TERMIOS),
+                        );
+                    }
                     signal_tx.send(Event::Resume).unwrap();
                     let size = get_window_size().unwrap();
                     signal_tx.send(size).unwrap();
@@ -346,8 +375,11 @@ pub fn enter_raw_mode() -> io::Result<(In, Out)> {
 pub fn exit_raw_mode() -> io::Result<()> {
     let mut stdout = io::stdout();
 
-    tcsetattr(stdout.as_raw_fd(), TCSAFLUSH, &TERMIOS)?;
     exit_alternate_buffer(&mut stdout)?;
+    unsafe {
+        // TODO: error handling
+        libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, &*TERMIOS);
+    }
     stdout.flush()?;
 
     Ok(())
