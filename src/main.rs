@@ -11,6 +11,7 @@ use std::io;
 use document::Document;
 use style::styled;
 use style::Style;
+use style::Decoration;
 use terminal::Event;
 
 fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
@@ -124,14 +125,14 @@ fn header(text: String, width: usize, style: Style) -> String {
         pad = " ".to_string();
     }
 
-    styled(style, format!("{}{}{}{}\r\n", left, text, right, pad))
+    styled(&style, &format!("{}{}{}{}\r\n", left, text, right, pad))
 }
 
 fn footer(status: String, row: usize, col: usize, width: usize, style: Style) -> String {
     let position = format!("{}:{}", col + 1, row + 1);
     let padding = String::from_utf8(vec![b' '; width - status.len() - position.len() - 2]).unwrap();
 
-    styled(style, format!(" {}{}{} ", status, padding, position))
+    styled(&style, &format!(" {}{}{} ", status, padding, position))
 }
 
 fn draw_rows(mut editor: Editor) -> Editor {
@@ -140,19 +141,28 @@ fn draw_rows(mut editor: Editor) -> Editor {
     }
 
     let header_style = Style {
-        foreground: 0,
-        background: 7,
+        foreground: 7,
+        background: 0,
+        decoration: vec![Decoration::Italic, Decoration::Underline],
     };
 
     let footer_style = match editor.search {
         Some(_) => Style {
             foreground: 7,
             background: 12,
+            decoration: vec![],
         },
         None => Style {
             foreground: 0,
             background: 7,
+            decoration: vec![],
         },
+    };
+
+    let content_style = Style {
+        foreground: 7,
+        background: 234,
+        decoration: vec![],
     };
 
     let window = editor.document.window(editor.width, editor.height - 2);
@@ -167,18 +177,22 @@ fn draw_rows(mut editor: Editor) -> Editor {
         .buffer
         .extend(header(name, editor.width, header_style).bytes());
 
+    let mut line_buffer: Vec<u8> = vec![];
+
     for i in 1..editor.height - 1 {
         let line = window.lines.get(i - 1).unwrap_or(&placeholder);
-        editor.buffer.extend(line.bytes());
+        line_buffer.extend(line.bytes());
 
         if line.len() < editor.width {
-            editor.buffer.extend(terminal::CLEAR_LINE);
+            line_buffer.extend(terminal::CLEAR_LINE);
         }
 
         if i < editor.height - 1 {
-            editor.buffer.extend(b"\r\n");
+            line_buffer.extend(b"\r\n");
         }
     }
+
+    editor.buffer.extend(styled(&content_style, &String::from_utf8(line_buffer).unwrap()).bytes());
 
     let status = match &editor.search {
         Some(s) => format!("FIND: {}", s),
