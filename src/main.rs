@@ -14,7 +14,7 @@ use style::Style;
 use style::Decoration;
 use terminal::Event;
 
-fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
+fn process_search(mut editor: Editor, event: Event) -> Editor {
     match event {
         Event::Input(c) => {
             editor.search = Some(format!("{}{}", editor.search.unwrap_or("".to_string()), c))
@@ -32,10 +32,10 @@ fn process_search(mut editor: Editor, event: Event) -> Option<Editor> {
         _ => {}
     }
 
-    Some(editor)
+    editor
 }
 
-fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
+fn process_event(mut editor: Editor, event: Event) -> Editor {
     if let Some(_) = &editor.search {
         return process_search(editor, event);
     }
@@ -50,7 +50,6 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
                     editor.error = Some(e);
                 }
             }
-            "q" => return None,
             "f" => editor.search = Some(String::new()),
             _ => {}
         },
@@ -93,17 +92,7 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
             editor.document = editor.document.insert_line();
         }
 
-        Event::Pause => {
-            editor.paused = true;
-            terminal::pause().unwrap();
-        }
-        Event::Resume => {
-            editor.paused = false;
-            terminal::resume().unwrap();
-        }
-
-        Event::Resize => {
-            let (width, height) = terminal::get_window_size().unwrap();
+        Event::Resize(width, height) => {
             editor.width = width;
             editor.height = height;
         }
@@ -113,7 +102,7 @@ fn process_event(mut editor: Editor, event: Event) -> Option<Editor> {
         _ => {}
     }
 
-    Some(editor)
+    editor
 }
 
 fn header(text: String, width: usize, style: Style) -> String {
@@ -237,7 +226,6 @@ struct Editor {
     document: Document,
     error: Option<io::Error>,
     search: Option<String>,
-    paused: bool,
 }
 
 impl Editor {
@@ -250,7 +238,6 @@ impl Editor {
                 document: document,
                 error: None,
                 search: None,
-                paused: false,
             },
             Err(e) => Editor {
                 width: 0,
@@ -259,12 +246,11 @@ impl Editor {
                 document: Document::blank(),
                 error: Some(e),
                 search: None,
-                paused: false,
             },
         }
     }
 
-    fn update(self, event: Event) -> Option<Editor> {
+    fn update(self, event: Event) -> Editor {
         process_event(self, event)
     }
 
@@ -274,17 +260,28 @@ impl Editor {
 
     fn run(self, read: terminal::In, write: terminal::Out) -> io::Result<()> {
         let mut editor = self;
+        let mut paused = false;
 
         loop {
             editor = editor.draw();
 
-            if !editor.paused {
+            if !paused {
                 write(&editor.buffer)?;
             }
 
-            match editor.update(read()) {
-                Some(e) => editor = e,
-                None => break,
+            match read() {
+                Event::Pause => {
+                    paused = true;
+                    terminal::pause().unwrap();
+                },
+                Event::Resume => {
+                    paused = false;
+                    terminal::resume().unwrap();
+                },
+                Event::Control(c) => if c.as_str() == "q" {
+                    break;
+                },
+                e => editor = editor.update(e),
             }
         }
 

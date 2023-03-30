@@ -56,7 +56,7 @@ pub enum Event {
     Pause,
     Resume,
 
-    Resize,
+    Resize(usize, usize),
 
     Error(String),
 }
@@ -197,7 +197,6 @@ pub fn get_window_size() -> io::Result<(usize, usize)> {
     };
 
     unsafe {
-        // TODO: error handling
         let status = libc::ioctl(stdout.as_raw_fd(), libc::TIOCGWINSZ, &size);
 
         if status == -1 {
@@ -300,11 +299,13 @@ pub fn init() -> io::Result<(In, Out)> {
 
             match s.try_into() {
                 Ok(Signal::SIGWINCH) => {
-                    signal_tx.send(Event::Resize).unwrap();
+                    let (width, height) = get_window_size().unwrap();
+                    signal_tx.send(Event::Resize(width, height)).unwrap();
                 }
                 Ok(Signal::SIGCONT) => {
+                    let (width, height) = get_window_size().unwrap();
                     signal_tx.send(Event::Resume).unwrap();
-                    signal_tx.send(Event::Resize).unwrap();
+                    signal_tx.send(Event::Resize(width, height)).unwrap();
                 }
                 _ => {}
             }
@@ -317,7 +318,8 @@ pub fn init() -> io::Result<(In, Out)> {
         libc::signal(libc::SIGCONT, handle_cont as libc::sighandler_t);
     }
 
-    tx.send(Event::Resize).unwrap();
+    let (width, height) = get_window_size().unwrap();
+    tx.send(Event::Resize(width, height)).unwrap();
 
     let read = move || match rx.recv() {
         Ok(e) => e,
