@@ -242,8 +242,8 @@ fn write(buffer: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
-pub type In = impl Fn() -> Event;
-pub type Out = impl Fn(&[u8]) -> io::Result<()>;
+pub type In = dyn Fn() -> Event;
+pub type Out = dyn Fn(&[u8]) -> io::Result<()>;
 
 pub fn enter_alternate_buffer() -> io::Result<()> {
     let mut stdout = io::stdout();
@@ -259,7 +259,7 @@ pub fn exit_alternate_buffer() -> io::Result<()> {
     Ok(())
 }
 
-pub fn init() -> io::Result<(In, Out)> {
+pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
     let stdout = io::stdout();
 
     unsafe {
@@ -326,7 +326,7 @@ pub fn init() -> io::Result<(In, Out)> {
         Err(e) => Event::Error(e.to_string()),
     };
 
-    Ok((read, write))
+    Ok((Box::new(read), Box::new(write)))
 }
 
 pub fn exit() -> io::Result<()> {

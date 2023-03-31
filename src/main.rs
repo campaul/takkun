@@ -1,5 +1,3 @@
-#![feature(type_alias_impl_trait)]
-
 mod document;
 mod style;
 #[macro_use]
@@ -258,7 +256,7 @@ impl Editor {
         refresh_screen(self)
     }
 
-    fn run(self, read: terminal::In, write: terminal::Out) -> io::Result<()> {
+    fn run(self, read: Box<terminal::In>, write: Box<terminal::Out>) -> io::Result<()> {
         let mut editor = self;
         let mut paused = false;
 
