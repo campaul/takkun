@@ -270,11 +270,11 @@ impl Editor {
             match read() {
                 Event::Pause => {
                     paused = true;
-                    terminal::pause().unwrap();
+                    terminal::pause()?;
                 },
                 Event::Resume => {
                     paused = false;
-                    terminal::resume().unwrap();
+                    terminal::resume()?;
                 },
                 Event::Control(c) => if c.as_str() == "q" {
                     break;

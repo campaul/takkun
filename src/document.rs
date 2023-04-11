@@ -61,7 +61,7 @@ impl Document {
 
         if Path::new(&filename).exists() {
             let mut file = File::open(filename.clone())?;
-            file.read_to_string(&mut contents).unwrap();
+            file.read_to_string(&mut contents)?;
         }
 
         Ok(Document {

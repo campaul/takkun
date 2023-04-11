@@ -274,7 +274,10 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
     let default_panic_hook = panic::take_hook();
 
     panic::set_hook(Box::new(move |info| {
-        exit().unwrap();
+        if let Err(e) = exit() {
+            println!("{}", e);
+        }
+
         default_panic_hook(info);
     }));
 
@@ -284,6 +287,7 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
     let signal_tx = tx.clone();
 
     thread::spawn(move || loop {
+        // TODO: send event indicating panic back to main thread
         stdin_tx.send(process_keypress()).unwrap();
     });
 
@@ -299,10 +303,12 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
 
             match s.try_into() {
                 Ok(Signal::SIGWINCH) => {
+                    // TODO: send event indicating panic back to main thread
                     let (width, height) = get_window_size().unwrap();
                     signal_tx.send(Event::Resize(width, height)).unwrap();
                 }
                 Ok(Signal::SIGCONT) => {
+                    // TODO: send event indicating panic back to main thread
                     let (width, height) = get_window_size().unwrap();
                     signal_tx.send(Event::Resume).unwrap();
                     signal_tx.send(Event::Resize(width, height)).unwrap();
@@ -318,6 +324,7 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
         libc::signal(libc::SIGCONT, handle_cont as libc::sighandler_t);
     }
 
+    // TODO: send event indicating panic
     let (width, height) = get_window_size().unwrap();
     tx.send(Event::Resize(width, height)).unwrap();
 
@@ -363,8 +370,8 @@ pub fn exit_raw_mode() -> io::Result<()> {
 }
 
 pub fn pause() -> io::Result<()> {
-    exit_raw_mode().unwrap();
-    exit_alternate_buffer().unwrap();
+    exit_raw_mode()?;
+    exit_alternate_buffer()?;
 
     unsafe {
         // TODO: error handling
