@@ -19,6 +19,8 @@ macro_rules! position_cursor {
 }
 
 static mut PIPES: [i32; 2] = [0; 2];
+
+#[cfg(any(target_os = "linux"))]
 static mut TERMIOS: libc::termios = libc::termios {
     c_iflag: 0,
     c_oflag: 0,
@@ -28,6 +30,17 @@ static mut TERMIOS: libc::termios = libc::termios {
     c_ispeed: 0,
     c_ospeed: 0,
     c_line: 0,
+};
+
+#[cfg(any(target_os = "freebsd"))]
+static mut TERMIOS: libc::termios = libc::termios {
+    c_iflag: 0,
+    c_oflag: 0,
+    c_cflag: 0,
+    c_lflag: 0,
+    c_cc: [0; 20],
+    c_ispeed: 0,
+    c_ospeed: 0,
 };
 
 pub enum Event {
