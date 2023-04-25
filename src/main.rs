@@ -276,8 +276,12 @@ impl Editor {
                     paused = false;
                     terminal::resume()?;
                 },
-                Event::Control(c) => if c.as_str() == "q" {
-                    break;
+                Event::Control(c) => {
+                    if c.as_str() == "q" {
+                        break;
+                    }
+
+                    editor = editor.update(Event::Control(c));
                 },
                 e => editor = editor.update(e),
             }
