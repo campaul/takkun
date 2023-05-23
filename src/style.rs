@@ -24,7 +24,7 @@ fn decoration(style: &Style) -> String {
 
 pub fn styled(style: &Style, text: &String) -> String {
     format!(
-        "\x1b[0m{}\x1b[38;5;{}m\x1b[48;5;{}m{}\x1b[0m",
+        "\x1b[0m{}\x1b[38;5;{}m\x1b[48;5;{}m{}",
         decoration(&style),
         style.foreground,
         style.background,

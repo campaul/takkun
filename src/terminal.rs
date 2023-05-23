@@ -45,7 +45,6 @@ static mut TERMIOS: libc::termios = libc::termios {
 
 pub enum Event {
     Input(String),
-    Control(String),
 
     Up,
     Down,
@@ -68,6 +67,10 @@ pub enum Event {
 
     Pause,
     Resume,
+    Exit,
+
+    Find,
+    Save,
 
     Resize(usize, usize),
 
@@ -144,16 +147,16 @@ fn process_keypress() -> Event {
                 return parse_escape(&mut stdin);
             }
 
-            if c == ctrl('q') {
-                return Event::Control("q".to_string());
-            }
-
             if c == ctrl('o') {
-                return Event::Control("o".to_string());
+                return Event::Save;
             }
 
             if c == ctrl('f') {
-                return Event::Control("f".to_string());
+                return Event::Find;
+            }
+
+            if c == ctrl('q') {
+                return Event::Exit;
             }
 
             if c == ctrl('z') {
@@ -260,7 +263,7 @@ pub type Out = dyn Fn(&[u8]) -> io::Result<()>;
 
 pub fn enter_alternate_buffer() -> io::Result<()> {
     let mut stdout = io::stdout();
-    stdout.write_all(b"\x1b[?1049h\033[2J\x1b[H")?;
+    stdout.write_all(b"\x1b[?1049h\x1b[2J\x1b[H")?;
     stdout.flush()?;
     Ok(())
 }
