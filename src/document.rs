@@ -100,6 +100,10 @@ impl Document {
         }
     }
 
+    pub fn set_filename(&mut self, filename: String) {
+        self.filename = Some(filename);
+    }
+
     pub fn save(&self) -> std::io::Result<()> {
         if let Some(filename) = &self.filename {
             let mut buffer = File::create(filename)?;
