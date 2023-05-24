@@ -16,50 +16,44 @@ use ui::Status;
 use ui::Tabs;
 use ui::TextArea;
 
-fn draw_rows(editor: &mut Editor) {
+fn draw_rows(editor: &mut Editor, write: &Box<terminal::Out>) {
     if editor.height == 0 {
         return;
     }
 
     let window = editor.root.render(editor.width, editor.height);
-    let mut line_buffer: Vec<u8> = vec![];
 
     for i in 1..editor.height + 1 {
         let line = window.lines.get(i - 1).unwrap();
-        line_buffer.extend(line.bytes());
+        write(line.as_bytes());
 
         if line.len() < editor.width {
-            line_buffer.extend(terminal::CLEAR_LINE);
+            write(terminal::CLEAR_LINE);
         }
 
         if i < editor.height {
-            line_buffer.extend(b"\r\n");
+            write(b"\r\n");
         }
     }
 
-    editor.buffer.extend(line_buffer);
-
-    editor.buffer.extend(position_cursor!(document::Cursor {
+    write(position_cursor!(document::Cursor {
         x: window.cursor.x,
         y: window.cursor.y,
     }));
 }
 
-fn refresh_screen(editor: &mut Editor) {
-    editor.buffer.clear();
+fn refresh_screen(editor: &mut Editor, write: &Box<terminal::Out>) {
+    write(terminal::HIDE_CURSOR);
+    write(terminal::ZERO_CURSOR);
 
-    editor.buffer.extend(terminal::HIDE_CURSOR);
-    editor.buffer.extend(terminal::ZERO_CURSOR);
+    draw_rows(editor, write);
 
-    draw_rows(editor);
-
-    editor.buffer.extend(terminal::SHOW_CURSOR);
+    write(terminal::SHOW_CURSOR);
 }
 
 struct Editor {
     width: usize,
     height: usize,
-    buffer: Vec<u8>,
     root: Box<dyn Component>,
 }
 
@@ -68,7 +62,6 @@ impl Editor {
         Editor {
             width: 0,
             height: 0,
-            buffer: vec![],
             root: Editor::create_root(Document::blank()),
         }
     }
@@ -92,8 +85,8 @@ impl Editor {
         Ok(())
     }
 
-    fn draw(&mut self) {
-        refresh_screen(self);
+    fn draw(&mut self, write: &Box<terminal::Out>) {
+        refresh_screen(self, write);
     }
 
     fn run(
@@ -111,10 +104,8 @@ impl Editor {
         }
 
         loop {
-            self.draw();
-
             if !paused {
-                write(&self.buffer)?;
+                self.draw(&write);
             }
 
             match read() {
