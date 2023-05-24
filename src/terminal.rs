@@ -14,7 +14,7 @@ pub const CLEAR_LINE: &[u8; 3] = b"\x1b[K";
 
 macro_rules! position_cursor {
     ($c:expr) => {
-        format!("\x1b[{};{}H", $c.y + 1, $c.x + 1).as_str().bytes()
+        format!("\x1b[{};{}H", $c.y + 1, $c.x + 1).as_bytes()
     };
 }
 
