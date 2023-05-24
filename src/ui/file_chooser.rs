@@ -14,13 +14,6 @@ enum Selection {
     Save(String),
 }
 
-fn set_selection(selection: &Selection, value: String) -> Selection {
-    match selection {
-        Selection::Open(s) => Selection::Open(value),
-        Selection::Save(s) => Selection::Save(value),
-    }
-}
-
 fn extend_selection(selection: &Selection, value: String) -> Selection {
     match selection {
         Selection::Open(s) => Selection::Open(format!("{}{}", s, value)),
@@ -62,7 +55,8 @@ impl Component for FileChooser {
                     if filename.len() != 0 {
                         match selection {
                             Selection::Open(_) => {
-                                self.child.update(Event::New, width);
+                                // TODO: handle if file is already open
+                                self.child.update(Event::New, width)?;
                                 self.document().open(filename.clone())?;
                                 self.selection = None;
                             }
@@ -80,21 +74,29 @@ impl Component for FileChooser {
                 _ => {}
             }
 
-            return Ok(());
+            Ok(())
         } else {
             match &e {
+                // TODO: handle close events to prompt for save
                 Event::Open => {
                     self.selection = Some(Selection::Open(String::new()));
                 }
                 Event::Save => {
-                    if let None = self.document().filename {
-                        self.selection = Some(Selection::Save(String::new()));
-                    }
+                    match self.document().filename {
+                        Some(_) => {
+                            self.document().save()?;
+                        }
+                        None => {
+                            self.selection = Some(Selection::Save(String::new()));
+                        }
+                    };
                 }
-                _ => {}
+                _ => {
+                    self.child.update(e, width)?;
+                }
             }
 
-            self.child.update(e, width)
+            Ok(())
         }
     }
 

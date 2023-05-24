@@ -108,9 +108,6 @@ impl Component for TextArea {
                 self.document.insert_line();
             }
 
-            Event::Save => {
-                self.document.save()?;
-            }
             _ => {}
         }
 
