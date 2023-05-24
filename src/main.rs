@@ -16,39 +16,44 @@ use ui::Status;
 use ui::Tabs;
 use ui::TextArea;
 
-fn draw_rows(editor: &mut Editor, write: &Box<terminal::Out>) {
+fn draw_rows(editor: &mut Editor, write: &Box<terminal::Out>) -> io::Result<()> {
     if editor.height == 0 {
-        return;
+        // TODO: this should probably return an error
+        return Ok(());
     }
 
     let window = editor.root.render(editor.width, editor.height);
 
     for i in 1..editor.height + 1 {
         let line = window.lines.get(i - 1).unwrap();
-        write(line.as_bytes());
+        write(line.as_bytes())?;
 
         if line.len() < editor.width {
-            write(terminal::CLEAR_LINE);
+            write(terminal::CLEAR_LINE)?;
         }
 
         if i < editor.height {
-            write(b"\r\n");
+            write(b"\r\n")?;
         }
     }
 
     write(position_cursor!(document::Cursor {
         x: window.cursor.x,
         y: window.cursor.y,
-    }));
+    }))?;
+
+    Ok(())
 }
 
-fn refresh_screen(editor: &mut Editor, write: &Box<terminal::Out>) {
-    write(terminal::HIDE_CURSOR);
-    write(terminal::ZERO_CURSOR);
+fn refresh_screen(editor: &mut Editor, write: &Box<terminal::Out>) -> io::Result<()> {
+    write(terminal::HIDE_CURSOR)?;
+    write(terminal::ZERO_CURSOR)?;
 
-    draw_rows(editor, write);
+    draw_rows(editor, write)?;
 
-    write(terminal::SHOW_CURSOR);
+    write(terminal::SHOW_CURSOR)?;
+
+    Ok(())
 }
 
 struct Editor {
@@ -85,8 +90,8 @@ impl Editor {
         Ok(())
     }
 
-    fn draw(&mut self, write: &Box<terminal::Out>) {
-        refresh_screen(self, write);
+    fn draw(&mut self, write: &Box<terminal::Out>) -> io::Result<()> {
+        refresh_screen(self, write)
     }
 
     fn run(
@@ -105,7 +110,7 @@ impl Editor {
 
         loop {
             if !paused {
-                self.draw(&write);
+                self.draw(&write)?;
             }
 
             match read() {
