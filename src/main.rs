@@ -10,6 +10,7 @@ use std::io;
 use document::Document;
 use terminal::Event;
 use ui::Component;
+use ui::FileChooser;
 use ui::Find;
 use ui::Status;
 use ui::Tabs;
@@ -73,7 +74,9 @@ impl Editor {
     }
 
     fn create_root(document: Document) -> Box<dyn Component> {
-        Status::new(Find::new(Tabs::new(TextArea::new(document))))
+        Status::new(FileChooser::new(Find::new(Tabs::new(TextArea::new(
+            document,
+        )))))
     }
 
     fn update(&mut self, event: Event) -> io::Result<()> {

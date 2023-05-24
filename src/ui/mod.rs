@@ -4,11 +4,13 @@ use crate::document::Cursor;
 use crate::document::Document;
 use crate::terminal::Event;
 
+mod file_chooser;
 mod find;
 mod status;
 mod tabs;
 mod text_area;
 
+pub use file_chooser::FileChooser;
 pub use find::Find;
 pub use status::Status;
 pub use tabs::Tabs;

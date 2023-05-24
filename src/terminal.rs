@@ -63,6 +63,12 @@ pub enum Event {
     Escape,
     Enter,
 
+    Next,
+    Prev,
+    New,
+    Open,
+    Close,
+
     Nothing,
 
     Pause,
@@ -147,7 +153,7 @@ fn process_keypress() -> Event {
                 return parse_escape(&mut stdin);
             }
 
-            if c == ctrl('o') {
+            if c == ctrl('s') {
                 return Event::Save;
             }
 
@@ -161,6 +167,26 @@ fn process_keypress() -> Event {
 
             if c == ctrl('z') {
                 return Event::Pause;
+            }
+
+            if c == ctrl('n') {
+                return Event::Next;
+            }
+
+            if c == ctrl('p') {
+                return Event::Prev;
+            }
+
+            if c == ctrl('t') {
+                return Event::New;
+            }
+
+            if c == ctrl('o') {
+                return Event::Open;
+            }
+
+            if c == ctrl('w') {
+                return Event::Close;
             }
 
             if c == 13 as char {
