@@ -134,6 +134,10 @@ impl Document {
     }
 
     pub fn current_line_len(&self) -> usize {
+        if self.rows.len() == 0 {
+            return 0;
+        }
+
         self.rows[self.cursor.y].len()
     }
 
@@ -210,5 +214,26 @@ impl Document {
             self.cursor.x = next.0;
             self.cursor.y = next.1;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::document::Document;
+
+    #[test]
+    fn current_line_len() {
+        let mut document = Document::blank();
+
+        // Returns 0 when there is no current line
+        assert_eq!(document.current_line_len(), 0);
+
+        // Returns 1 when the line has 1 character
+        document.insert(String::from(" "));
+        assert_eq!(document.current_line_len(), 1);
+
+        // Returns 0 when current line is empty
+        document.delete_prev();
+        assert_eq!(document.current_line_len(), 0);
     }
 }
