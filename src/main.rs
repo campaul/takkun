@@ -77,17 +77,16 @@ impl Editor {
         )))))
     }
 
-    fn update(&mut self, event: Event) -> io::Result<()> {
+    fn update(&mut self, event: Event) -> io::Result<bool> {
         match event {
             Event::Resize(width, height) => {
                 self.width = width;
                 self.height = height;
+                Ok(true)
             }
 
-            _ => self.root.update(event, self.width)?,
+            _ => self.root.update(event, self.width),
         }
-
-        Ok(())
     }
 
     fn draw(&mut self, write: &Box<terminal::Out>) -> io::Result<()> {
@@ -101,6 +100,7 @@ impl Editor {
         write: Box<terminal::Out>,
     ) -> io::Result<()> {
         let mut paused = false;
+        let mut dirty = true;
 
         if let Some(f) = filename {
             if let Err(e) = self.root.document().open(f) {
@@ -109,8 +109,9 @@ impl Editor {
         }
 
         loop {
-            if !paused {
+            if dirty && !paused {
                 self.draw(&write)?;
+                dirty = false;
             }
 
             match read() {
@@ -126,7 +127,7 @@ impl Editor {
                     // TODO: propagate this event to check for unsaved files
                     break;
                 }
-                e => self.update(e)?,
+                e => dirty = self.update(e)?,
             }
         }
 

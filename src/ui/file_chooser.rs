@@ -43,7 +43,8 @@ impl FileChooser {
 }
 
 impl Component for FileChooser {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<()> {
+    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
+        let mut dirty = true;
         if let Some(selection) = &self.selection.clone() {
             match &e {
                 Event::Input(c) => {
@@ -56,7 +57,7 @@ impl Component for FileChooser {
                         match selection {
                             Selection::Open(_) => {
                                 // TODO: handle if file is already open
-                                self.child.update(Event::New, width)?;
+                                dirty = self.child.update(Event::New, width)?;
                                 self.document().open(filename.clone())?;
                                 self.selection = None;
                             }
@@ -71,10 +72,12 @@ impl Component for FileChooser {
                 Event::Escape => {
                     self.selection = None;
                 }
-                _ => {}
+                _ => {
+                    return  Ok(false);
+                }
             }
 
-            Ok(())
+            Ok(true)
         } else {
             match &e {
                 // TODO: handle close events to prompt for save
@@ -92,11 +95,11 @@ impl Component for FileChooser {
                     };
                 }
                 _ => {
-                    self.child.update(e, width)?;
+                    dirty = self.child.update(e, width)?;
                 }
             }
 
-            Ok(())
+            Ok(dirty)
         }
     }
 

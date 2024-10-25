@@ -23,7 +23,7 @@ impl Status {
 }
 
 impl Component for Status {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<()> {
+    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
         if let Event::Error(ref error) = e {
             self.error = Some(error.to_string());
         }
@@ -36,12 +36,15 @@ impl Component for Status {
                 _ => {}
             }
         } else {
-            if let Err(error) = self.child.update(e, width) {
+            let u = self.child.update(e, width);
+            if let Err(error) = u {
                 self.error = Some(error.to_string());
+            } else {
+                return u;
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     fn render(&mut self, width: usize, height: usize) -> Window {

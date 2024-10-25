@@ -31,29 +31,29 @@ impl Tabs {
 }
 
 impl Component for Tabs {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<()> {
+    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
         match e {
             Event::Next => {
                 self.selected = (self.selected + 1) % self.children.len();
+                Ok(true)
             }
             Event::Prev => {
                 self.selected = (self.selected + self.children.len() - 1) % self.children.len();
+                Ok(true)
             }
             Event::New => {
                 self.children
                     .insert(self.selected + 1, TextArea::new(Document::blank()));
                 self.selected += 1;
+                Ok(true)
             }
             Event::Close => {
                 self.children.remove(self.selected);
                 self.selected = (self.selected + self.children.len() - 1) % self.children.len();
+                Ok(false)
             }
-            _ => {
-                self.current_child().update(e, width)?;
-            }
+            _ => self.current_child().update(e, width),
         }
-
-        Ok(())
     }
 
     fn render(&mut self, width: usize, height: usize) -> Window {

@@ -23,9 +23,10 @@ impl Find {
 }
 
 impl Component for Find {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<()> {
+    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
         if let Event::Find = e {
             self.search = Some(String::new());
+            return Ok(true);
         }
 
         if let Some(_) = self.search {
@@ -47,10 +48,12 @@ impl Component for Find {
                 Event::Escape => {
                     self.search = None;
                 }
-                _ => {}
+                _ => {
+                    return Ok(false);
+                }
             }
 
-            return Ok(());
+            return Ok(true);
         }
 
         self.child.update(e, width)

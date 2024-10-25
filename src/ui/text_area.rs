@@ -63,7 +63,7 @@ impl TextArea {
 }
 
 impl Component for TextArea {
-    fn update(&mut self, event: Event, width: usize) -> io::Result<()> {
+    fn update(&mut self, event: Event, width: usize) -> io::Result<bool> {
         match event {
             Event::Input(c) => {
                 self.document.insert(c);
@@ -108,10 +108,12 @@ impl Component for TextArea {
                 self.document.insert_line();
             }
 
-            _ => {}
+            _ => {
+                return Ok(false);
+            }
         }
 
-        Ok(())
+        Ok(true)
     }
 
     fn render(&mut self, width: usize, height: usize) -> Window {
