@@ -77,7 +77,7 @@ impl Component for FileChooser {
                 }
             }
 
-            Ok(true)
+            Ok(dirty)
         } else {
             match &e {
                 // TODO: handle close events to prompt for save
