@@ -197,7 +197,7 @@ fn process_keypress() -> Event {
                 return Event::Enter;
             }
 
-            if c == 127 as char {
+            if c == 8 as char {
                 return Event::Backspace;
             }
 
