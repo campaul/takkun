@@ -4,7 +4,9 @@ use std::io::Read;
 use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::panic;
+use std::ptr::addr_of_mut;
 use std::sync::mpsc;
+use std::sync::OnceLock;
 use std::thread;
 
 pub const HIDE_CURSOR: &[u8; 6] = b"\x1b[?25l";
@@ -42,6 +44,8 @@ static mut TERMIOS: libc::termios = libc::termios {
     c_ispeed: 0,
     c_ospeed: 0,
 };
+
+static CELL: OnceLock<libc::termios> = OnceLock::new();
 
 pub enum Event {
     Input(String),
@@ -306,7 +310,8 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
 
     unsafe {
         // TODO: error handling
-        libc::tcgetattr(stdout.as_raw_fd(), &mut TERMIOS);
+        libc::tcgetattr(stdout.as_raw_fd(), addr_of_mut!(TERMIOS));
+        CELL.get_or_init(|| TERMIOS.clone());
         libc::pipe(PIPES.as_mut_ptr());
     }
 
@@ -393,7 +398,7 @@ pub fn enter_raw_mode() -> io::Result<()> {
         libc::tcsetattr(
             stdout.as_raw_fd(),
             libc::TCSAFLUSH,
-            &raw_mode_termios(&TERMIOS),
+            &raw_mode_termios(CELL.get().unwrap()),
         );
     }
 
@@ -405,7 +410,7 @@ pub fn exit_raw_mode() -> io::Result<()> {
 
     unsafe {
         // TODO: error handling
-        libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, &TERMIOS);
+        libc::tcsetattr(stdout.as_raw_fd(), libc::TCSAFLUSH, CELL.get().unwrap());
     }
 
     Ok(())
