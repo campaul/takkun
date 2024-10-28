@@ -73,7 +73,7 @@ impl Component for FileChooser {
                     self.selection = None;
                 }
                 _ => {
-                    return  Ok(false);
+                    return Ok(false);
                 }
             }
 

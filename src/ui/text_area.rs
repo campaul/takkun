@@ -156,17 +156,22 @@ impl Component for TextArea {
             visible_lines.push(String::from("~"));
         }
 
-        visible_lines[0] = styled(
-            &Style {
-                foreground: 7,
-                background: 234,
-                decoration: vec![],
-            },
-            &visible_lines[0],
-        );
+        let styled_lines: Vec<String> = visible_lines
+            .into_iter()
+            .map(|l| {
+                styled(
+                    &Style {
+                        foreground: 7,
+                        background: 234,
+                        decoration: vec![],
+                    },
+                    &l,
+                )
+            })
+            .collect();
 
         Window {
-            lines: visible_lines.to_vec(),
+            lines: styled_lines,
             cursor: cursor,
         }
     }

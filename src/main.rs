@@ -7,6 +7,7 @@ mod ui;
 use std::env;
 use std::io;
 
+use document::Cursor;
 use document::Document;
 use terminal::Event;
 use ui::Component;
@@ -15,17 +16,32 @@ use ui::Find;
 use ui::Status;
 use ui::Tabs;
 use ui::TextArea;
+use ui::Window;
 
-fn draw_rows(editor: &mut Editor, write: &Box<terminal::Out>) -> io::Result<()> {
+fn draw_rows(editor: &mut Editor, prev: &Window, write: &Box<terminal::Out>) -> io::Result<Window> {
     if editor.height == 0 {
         // TODO: this should probably return an error
-        return Ok(());
+        return Ok(Window {
+            lines: vec![],
+            cursor: Cursor { x: 0, y: 0 },
+        });
     }
 
     let window = editor.root.render(editor.width, editor.height);
 
     for i in 1..editor.height + 1 {
         let line = window.lines.get(i - 1).unwrap();
+        let prev_line = prev.lines.get(i - 1);
+
+        if let Some(p) = prev_line {
+            if p == line {
+                write(position_cursor!(document::Cursor { x: 0, y: i }))?;
+
+                continue;
+            }
+        }
+
+        // TODO: reset line style
         write(line.as_bytes())?;
 
         if line.len() < editor.width {
@@ -42,18 +58,22 @@ fn draw_rows(editor: &mut Editor, write: &Box<terminal::Out>) -> io::Result<()> 
         y: window.cursor.y,
     }))?;
 
-    Ok(())
+    Ok(window)
 }
 
-fn refresh_screen(editor: &mut Editor, write: &Box<terminal::Out>) -> io::Result<()> {
+fn refresh_screen(
+    editor: &mut Editor,
+    prev: &Window,
+    write: &Box<terminal::Out>,
+) -> io::Result<Window> {
     write(terminal::HIDE_CURSOR)?;
     write(terminal::ZERO_CURSOR)?;
 
-    draw_rows(editor, write)?;
+    let window = draw_rows(editor, prev, write)?;
 
     write(terminal::SHOW_CURSOR)?;
 
-    Ok(())
+    Ok(window)
 }
 
 struct Editor {
@@ -89,8 +109,8 @@ impl Editor {
         }
     }
 
-    fn draw(&mut self, write: &Box<terminal::Out>) -> io::Result<()> {
-        refresh_screen(self, write)
+    fn draw(&mut self, prev: &Window, write: &Box<terminal::Out>) -> io::Result<Window> {
+        refresh_screen(self, &prev, write)
     }
 
     fn run(
@@ -108,9 +128,14 @@ impl Editor {
             }
         }
 
+        let mut prev = Window {
+            lines: vec![],
+            cursor: Cursor { x: 0, y: 0 },
+        };
+
         loop {
             if dirty && !paused {
-                self.draw(&write)?;
+                prev = self.draw(&prev, &write)?;
                 dirty = false;
             }
 
