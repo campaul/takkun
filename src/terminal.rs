@@ -235,7 +235,7 @@ pub fn raw_mode_termios(termios: &libc::termios) -> libc::termios {
 pub fn get_window_size() -> io::Result<(usize, usize)> {
     let stdout = io::stdout();
 
-    let size = libc::winsize {
+    let mut size = libc::winsize {
         ws_row: 0,
         ws_col: 0,
         ws_xpixel: 0,
@@ -243,7 +243,7 @@ pub fn get_window_size() -> io::Result<(usize, usize)> {
     };
 
     unsafe {
-        let status = libc::ioctl(stdout.as_raw_fd(), libc::TIOCGWINSZ, &size);
+        let status = libc::ioctl(stdout.as_raw_fd(), libc::TIOCGWINSZ, &mut size);
 
         if status == -1 {
             return Err(io::Error::new(
