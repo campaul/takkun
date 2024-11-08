@@ -353,12 +353,13 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
                     // TODO: send event indicating panic back to main thread
                     let (width, height) = get_window_size().unwrap();
                     signal_tx.send(Event::Resize(width, height)).unwrap();
+                    signal_tx.send(Event::Resume).unwrap();
                 }
                 Ok(Signal::SIGCONT) => {
                     // TODO: send event indicating panic back to main thread
                     let (width, height) = get_window_size().unwrap();
-                    signal_tx.send(Event::Resume).unwrap();
                     signal_tx.send(Event::Resize(width, height)).unwrap();
+                    signal_tx.send(Event::Resume).unwrap();
                 }
                 _ => {}
             }

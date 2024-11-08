@@ -146,6 +146,8 @@ impl Editor {
                 }
                 Event::Resume => {
                     paused = false;
+                    dirty = true;
+                    prev.lines = vec![];
                     terminal::resume()?;
                 }
                 Event::Exit => {
