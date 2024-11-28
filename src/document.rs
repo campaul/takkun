@@ -1,3 +1,6 @@
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
+
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -9,8 +12,114 @@ pub struct Cursor {
     pub y: usize,
 }
 
+#[derive(Clone)]
+pub struct Cell {
+    grapheme: String,
+    width: usize,
+}
+
+#[derive(Clone)]
+pub struct Row {
+    cells: Vec<Cell>,
+}
+
+impl Row {
+    fn new() -> Row {
+        Row {
+            cells: vec![],
+        }
+    }
+
+    fn insert_str(&mut self, position: usize, s: &str) {
+        self.cells.splice(position..position, cells(s).cells);
+    }
+
+    fn split_at(&self, position: usize) -> (Row, Row) {
+        let (left, right) = self.cells.split_at(position);
+        (Row { cells: left.to_vec() }, Row { cells: right.to_vec() })
+    }
+
+    fn append(&mut self, row: Row) {
+        self.cells.extend(row.cells);
+    }
+
+    fn remove(&mut self, position: usize) {
+        self.cells.remove(position);
+    }
+
+    fn as_string(&self) -> String {
+        let mut line = String::new();
+
+        for cell in self.cells.iter() {
+            line = line + &cell.grapheme;
+        }
+
+        line
+    }
+
+    fn len(&self) -> usize {
+        self.cells.len()
+    }
+
+    pub fn split(&self, max_width: usize) -> Vec<String> {
+        let mut display_lines: Vec<String> = vec![];
+        let mut line = String::new();
+        let mut width = 0;
+
+        for cell in self.cells.iter() {
+            line.push_str(&cell.grapheme);
+            if width + cell.width < max_width {
+                width += cell.width;
+            } else {
+                display_lines.push(line);
+                line = String::new();
+                width = 0;
+            }
+        }
+
+        display_lines.push(line);
+
+        display_lines
+    }
+
+    pub fn match_indices(&self, pattern: &str) -> Vec<usize> {
+        if pattern.len() > self.cells.len() {
+            return vec![];
+        }
+
+        let mut matches = vec![];
+        let pattern_graphemes: Vec<&str> = pattern.graphemes(false).collect();
+
+        for i in 0..self.cells.len() - pattern_graphemes.len() {
+            let mut does_match = true;
+            for j in 0..pattern_graphemes.len() {
+                if self.cells[i+j].grapheme != pattern_graphemes[j] {
+                    does_match = false;
+                    break;
+                }
+            }
+            if does_match {
+                matches.push(i);
+            }
+        }
+
+        matches
+    }
+}
+
+pub fn cells(line: &str) -> Row {
+    Row {
+        cells: line.graphemes(false).map(|g| {
+            Cell {
+                grapheme: g.to_string(),
+                width: g.width(),
+            }
+        }).collect(),
+    }
+}
+
 pub struct Document {
-    pub rows: Vec<String>,
+    pub rows: Vec<Row>,
     pub cursor: Cursor,
     pub filename: Option<String>,
 }
@@ -32,7 +141,7 @@ impl Document {
             file.read_to_string(&mut contents)?;
         }
 
-        self.rows = contents.lines().map(String::from).collect();
+        self.rows = contents.lines().map(cells).collect();
         self.cursor = Cursor { x: 0, y: 0 };
         self.filename = Some(filename);
 
@@ -47,7 +156,7 @@ impl Document {
         assert!(c.len() == 1);
 
         if self.rows.len() == 0 {
-            self.rows.push(String::new());
+            self.rows.push(Row::new());
         }
 
         self.rows[self.cursor.y].insert_str(self.cursor.x, &c);
@@ -62,8 +171,8 @@ impl Document {
         let row = self.rows.remove(self.cursor.y);
         let (first, last) = row.split_at(self.cursor.x);
 
-        self.rows.insert(self.cursor.y, last.to_string());
-        self.rows.insert(self.cursor.y, first.to_string());
+        self.rows.insert(self.cursor.y, last);
+        self.rows.insert(self.cursor.y, first);
 
         self.cursor.y += 1;
         self.cursor.x = 0;
@@ -87,7 +196,7 @@ impl Document {
             self.cursor.y -= 1;
             self.cursor.x = self.current_line_len();
 
-            self.rows[self.cursor.y] = format!("{}{}", self.rows[self.cursor.y], prev);
+            self.rows[self.cursor.y].append(prev);
         } else if !self.on_first_char() {
             self.cursor.x -= 1;
             self.rows[self.cursor.y].remove(self.cursor.x);
@@ -109,7 +218,7 @@ impl Document {
             let mut buffer = File::create(filename)?;
 
             for row in &self.rows {
-                buffer.write_all(row.as_bytes())?;
+                buffer.write_all(row.as_string().as_bytes())?;
                 buffer.write_all(&[b'\n'])?;
             }
         }
@@ -194,7 +303,7 @@ impl Document {
 
         for i in 0..self.rows.len() {
             for m in self.rows[i].match_indices(&text) {
-                matches.push((m.0, i));
+                matches.push((m, i));
             }
         }
 
@@ -214,6 +323,16 @@ impl Document {
             self.cursor.x = next.0;
             self.cursor.y = next.1;
         }
+    }
+
+    pub fn cursor_display_x(&self) -> usize {
+        let mut display_len = 0;
+
+        for i in 0..self.cursor.x {
+            display_len += self.rows[self.cursor.y].cells[i].width;
+        }
+
+        display_len
     }
 }
 

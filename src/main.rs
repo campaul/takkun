@@ -53,10 +53,7 @@ fn draw_rows(editor: &mut Editor, prev: &Window, write: &Box<terminal::Out>) -> 
         }
     }
 
-    write(position_cursor!(document::Cursor {
-        x: window.cursor.x,
-        y: window.cursor.y,
-    }))?;
+    write(position_cursor!(window.cursor))?;
 
     Ok(window)
 }

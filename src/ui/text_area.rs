@@ -8,24 +8,6 @@ use crate::terminal::Event;
 use crate::ui::Component;
 use crate::ui::Window;
 
-// Split a line into multiple lines based on a maximum width
-// TODO: support UTF-8 instead of just ASCII
-fn split(line: &String, width: usize) -> Vec<String> {
-    let mut lines: Vec<String> = vec![];
-
-    if width == 0 {
-        return lines;
-    }
-
-    for i in 0..line.len() / width {
-        lines.push(line[i * width..i * width + width].into());
-    }
-
-    lines.push(line[line.len() - line.len() % width..line.len()].into());
-
-    lines
-}
-
 pub struct TextArea {
     document: Document,
     window_offset: usize,
@@ -128,11 +110,11 @@ impl Component for TextArea {
         }
 
         for (i, row) in self.document.rows.iter().enumerate() {
-            let split_lines = split(row, width);
+            let split_lines = row.split(width);
 
             if i == self.document.cursor.y {
-                cursor.x = self.document.cursor.x % width;
-                cursor.y = lines.len() + self.document.cursor.x / width;
+                cursor.x = self.document.cursor_display_x() % width;
+                cursor.y = lines.len() + self.document.cursor_display_x() / width;
             }
 
             lines.extend(split_lines);
