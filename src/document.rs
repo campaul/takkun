@@ -110,9 +110,18 @@ impl Row {
 pub fn cells(line: &str) -> Row {
     Row {
         cells: line.graphemes(false).map(|g| {
-            Cell {
-                grapheme: g.to_string(),
-                width: g.width(),
+            let grapheme = g.to_string();
+
+            if g == String::from("\t") {
+                Cell {
+                    grapheme: grapheme,
+                    width: 4,
+                }
+            } else {
+                Cell {
+                    grapheme: grapheme,
+                    width: g.width(),
+                }
             }
         }).collect(),
     }
