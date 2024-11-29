@@ -46,7 +46,7 @@ impl TextArea {
 }
 
 impl Component for TextArea {
-    fn update(&mut self, event: Event, width: usize) -> io::Result<bool> {
+    fn update(&mut self, event: &Event, width: usize) -> io::Result<bool> {
         match event {
             Event::Input(c) => {
                 self.document.insert(c);

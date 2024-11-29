@@ -25,9 +25,7 @@ pub struct Row {
 
 impl Row {
     fn new() -> Row {
-        Row {
-            cells: vec![],
-        }
+        Row { cells: vec![] }
     }
 
     fn insert_str(&mut self, position: usize, s: &str) {
@@ -36,7 +34,14 @@ impl Row {
 
     fn split_at(&self, position: usize) -> (Row, Row) {
         let (left, right) = self.cells.split_at(position);
-        (Row { cells: left.to_vec() }, Row { cells: right.to_vec() })
+        (
+            Row {
+                cells: left.to_vec(),
+            },
+            Row {
+                cells: right.to_vec(),
+            },
+        )
     }
 
     fn append(&mut self, row: Row) {
@@ -97,7 +102,7 @@ impl Row {
         for i in 0..self.cells.len() - pattern_graphemes.len() {
             let mut does_match = true;
             for j in 0..pattern_graphemes.len() {
-                if self.cells[i+j].grapheme != pattern_graphemes[j] {
+                if self.cells[i + j].grapheme != pattern_graphemes[j] {
                     does_match = false;
                     break;
                 }
@@ -113,21 +118,24 @@ impl Row {
 
 pub fn cells(line: &str) -> Row {
     Row {
-        cells: line.graphemes(false).map(|g| {
-            let grapheme = g.to_string();
+        cells: line
+            .graphemes(false)
+            .map(|g| {
+                let grapheme = g.to_string();
 
-            if g == String::from("\t") {
-                Cell {
-                    grapheme: grapheme,
-                    width: 4,
+                if g == String::from("\t") {
+                    Cell {
+                        grapheme: grapheme,
+                        width: 4,
+                    }
+                } else {
+                    Cell {
+                        grapheme: grapheme,
+                        width: g.width(),
+                    }
                 }
-            } else {
-                Cell {
-                    grapheme: grapheme,
-                    width: g.width(),
-                }
-            }
-        }).collect(),
+            })
+            .collect(),
     }
 }
 
@@ -165,7 +173,7 @@ impl Document {
         self.filename.clone().unwrap_or("New File".to_string())
     }
 
-    pub fn insert(&mut self, c: String) {
+    pub fn insert(&mut self, c: &String) {
         assert!(c.len() == 1);
 
         if self.rows.len() == 0 {
@@ -218,7 +226,7 @@ impl Document {
 
     pub fn tab(&mut self) {
         for _ in 0..4 {
-            self.insert(" ".to_string());
+            self.insert(&" ".to_string());
         }
     }
 

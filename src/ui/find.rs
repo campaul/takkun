@@ -23,7 +23,7 @@ impl Find {
 }
 
 impl Component for Find {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
+    fn update(&mut self, e: &Event, width: usize) -> io::Result<bool> {
         if let Event::Find = e {
             self.search = Some(String::new());
             return Ok(true);

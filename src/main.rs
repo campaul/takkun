@@ -89,11 +89,11 @@ impl Editor {
         )))))
     }
 
-    fn update(&mut self, event: Event) -> io::Result<bool> {
+    fn update(&mut self, event: &Event) -> io::Result<bool> {
         match event {
             Event::Resize(width, height) => {
-                self.width = width;
-                self.height = height;
+                self.width = *width;
+                self.height = *height;
                 Ok(true)
             }
 
@@ -116,7 +116,7 @@ impl Editor {
 
         if let Some(f) = filename {
             if let Err(e) = self.root.document().open(f) {
-                self.update(Event::Error(e.to_string()))?;
+                self.update(&Event::Error(e.to_string()))?;
             }
         }
 
@@ -125,28 +125,30 @@ impl Editor {
             cursor: Cursor { x: 0, y: 0 },
         };
 
-        loop {
+        'outer: loop {
             if dirty && !paused {
                 prev = self.draw(&prev, &write)?;
                 dirty = false;
             }
 
-            match read() {
-                Event::Pause => {
-                    paused = true;
-                    terminal::pause()?;
+            for event in read().iter() {
+                match event {
+                    Event::Pause => {
+                        paused = true;
+                        terminal::pause()?;
+                    }
+                    Event::Resume => {
+                        paused = false;
+                        dirty = true;
+                        prev.lines = vec![];
+                        terminal::resume()?;
+                    }
+                    Event::Exit => {
+                        // TODO: propagate this event to check for unsaved files
+                        break 'outer;
+                    }
+                    e => dirty = self.update(e)?,
                 }
-                Event::Resume => {
-                    paused = false;
-                    dirty = true;
-                    prev.lines = vec![];
-                    terminal::resume()?;
-                }
-                Event::Exit => {
-                    // TODO: propagate this event to check for unsaved files
-                    break;
-                }
-                e => dirty = self.update(e)?,
             }
         }
 
