@@ -36,17 +36,12 @@ fn draw_rows(editor: &mut Editor, prev: &Window, write: &Box<terminal::Out>) -> 
         if let Some(p) = prev_line {
             if p == line {
                 write(position_cursor!(document::Cursor { x: 0, y: i }))?;
-
                 continue;
             }
         }
 
         // TODO: reset line style
         write(line.as_bytes())?;
-
-        if line.len() < editor.width {
-            write(terminal::CLEAR_LINE)?;
-        }
 
         if i < editor.height {
             write(b"\r\n")?;

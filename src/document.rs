@@ -61,7 +61,7 @@ impl Row {
         self.cells.len()
     }
 
-    pub fn split(&self, max_width: usize) -> Vec<String> {
+    pub fn split(&self, max_width: usize, end: &str) -> Vec<String> {
         let mut display_lines: Vec<String> = vec![];
         let mut line = String::new();
         let mut width = 0;
@@ -75,6 +75,10 @@ impl Row {
                 line = String::new();
                 width = 0;
             }
+        }
+
+        if line.width() < max_width {
+            line = line + end;
         }
 
         display_lines.push(line);

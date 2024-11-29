@@ -5,6 +5,7 @@ use crate::document::Document;
 use crate::style::styled;
 use crate::style::Style;
 use crate::terminal::Event;
+use crate::terminal::CLEAR_LINE;
 use crate::ui::Component;
 use crate::ui::Window;
 
@@ -110,7 +111,7 @@ impl Component for TextArea {
         }
 
         for (i, row) in self.document.rows.iter().enumerate() {
-            let split_lines = row.split(width);
+            let split_lines = row.split(width, std::str::from_utf8(CLEAR_LINE).unwrap());
 
             if i == self.document.cursor.y {
                 cursor.x = self.document.cursor_display_x() % width;
@@ -135,7 +136,7 @@ impl Component for TextArea {
         let visible_lines = &mut lines[self.window_offset..last_line].to_vec();
 
         for _ in last_line..(self.window_offset + height) {
-            visible_lines.push(String::from("~"));
+            visible_lines.push(format!("~{}", std::str::from_utf8(CLEAR_LINE).unwrap()));
         }
 
         let styled_lines: Vec<String> = visible_lines
