@@ -1,8 +1,10 @@
+#[derive(Clone, PartialEq)]
 pub enum Decoration {
     Italic,
     Underline,
 }
 
+#[derive(Clone, PartialEq)]
 pub struct Style {
     pub foreground: u8,
     pub background: u8,

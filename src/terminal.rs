@@ -47,6 +47,7 @@ static mut TERMIOS: libc::termios = libc::termios {
 
 static CELL: OnceLock<libc::termios> = OnceLock::new();
 
+#[derive(Debug)]
 pub enum Event {
     Input(String),
 

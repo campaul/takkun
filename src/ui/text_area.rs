@@ -136,25 +136,19 @@ impl Component for TextArea {
         let visible_lines = &mut lines[self.window_offset..last_line].to_vec();
 
         for _ in last_line..(self.window_offset + height) {
-            visible_lines.push(format!("~{}", std::str::from_utf8(CLEAR_LINE).unwrap()));
+            let style = &Style {
+                foreground: 7,
+                background: 234,
+                decoration: vec![],
+            };
+            visible_lines.push(styled(
+                style,
+                &format!("~{}", std::str::from_utf8(CLEAR_LINE).unwrap()),
+            ));
         }
 
-        let styled_lines: Vec<String> = visible_lines
-            .into_iter()
-            .map(|l| {
-                styled(
-                    &Style {
-                        foreground: 7,
-                        background: 234,
-                        decoration: vec![],
-                    },
-                    &l,
-                )
-            })
-            .collect();
-
         Window {
-            lines: styled_lines,
+            lines: visible_lines.clone(),
             cursor: cursor,
         }
     }

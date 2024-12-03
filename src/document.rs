@@ -6,6 +6,9 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
+use crate::style::styled;
+use crate::style::Style;
+
 #[derive(Copy, Clone)]
 pub struct Cursor {
     pub x: usize,
@@ -16,6 +19,7 @@ pub struct Cursor {
 pub struct Cell {
     grapheme: String,
     width: usize,
+    style: Style,
 }
 
 #[derive(Clone)]
@@ -70,9 +74,22 @@ impl Row {
         let mut display_lines: Vec<String> = vec![];
         let mut line = String::new();
         let mut width = 0;
+        let mut style = &Style {
+            foreground: 7,
+            background: 234,
+            decoration: vec![],
+        };
+
+        line.push_str(&styled(style, &String::new()));
 
         for cell in self.cells.iter() {
-            line.push_str(&cell.grapheme);
+            if &cell.style != style {
+                style = &cell.style;
+                line.push_str(&styled(&style, &cell.grapheme));
+            } else {
+                line.push_str(&cell.grapheme);
+            }
+
             if width + cell.width < max_width {
                 width += cell.width;
             } else {
@@ -82,7 +99,7 @@ impl Row {
             }
         }
 
-        if line.width() < max_width {
+        if width < max_width {
             line = line + end;
         }
 
@@ -127,11 +144,21 @@ pub fn cells(line: &str) -> Row {
                     Cell {
                         grapheme: grapheme,
                         width: 4,
+                        style: Style {
+                            foreground: 7,
+                            background: 234,
+                            decoration: vec![],
+                        },
                     }
                 } else {
                     Cell {
                         grapheme: grapheme,
                         width: g.width(),
+                        style: Style {
+                            foreground: 7,
+                            background: 234,
+                            decoration: vec![],
+                        },
                     }
                 }
             })
