@@ -43,7 +43,7 @@ impl FileChooser {
 }
 
 impl Component for FileChooser {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
+    fn update(&mut self, e: &Event, width: usize) -> io::Result<bool> {
         let mut dirty = true;
         if let Some(selection) = &self.selection.clone() {
             match &e {
@@ -57,7 +57,7 @@ impl Component for FileChooser {
                         match selection {
                             Selection::Open(_) => {
                                 // TODO: handle if file is already open
-                                dirty = self.child.update(Event::New, width)?;
+                                dirty = self.child.update(&Event::New, width)?;
                                 self.document().open(filename.clone())?;
                                 self.selection = None;
                             }

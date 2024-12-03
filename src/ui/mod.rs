@@ -22,7 +22,7 @@ pub struct Window {
 }
 
 pub trait Component {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<bool>;
+    fn update(&mut self, e: &Event, width: usize) -> io::Result<bool>;
     fn render(&mut self, width: usize, height: usize) -> Window;
     fn document(&mut self) -> &mut Document;
 }

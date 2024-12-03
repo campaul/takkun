@@ -1,8 +1,10 @@
+#[derive(Clone, PartialEq)]
 pub enum Decoration {
     Italic,
     Underline,
 }
 
+#[derive(Clone, PartialEq)]
 pub struct Style {
     pub foreground: u8,
     pub background: u8,
@@ -28,6 +30,6 @@ pub fn styled(style: &Style, text: &String) -> String {
         decoration(&style),
         style.foreground,
         style.background,
-        text
+        text.replace("\t", std::str::from_utf8(&[b' '; 4]).unwrap()),
     )
 }

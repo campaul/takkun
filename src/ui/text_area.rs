@@ -5,26 +5,9 @@ use crate::document::Document;
 use crate::style::styled;
 use crate::style::Style;
 use crate::terminal::Event;
+use crate::terminal::CLEAR_LINE;
 use crate::ui::Component;
 use crate::ui::Window;
-
-// Split a line into multiple lines based on a maximum width
-// TODO: support UTF-8 instead of just ASCII
-fn split(line: &String, width: usize) -> Vec<String> {
-    let mut lines: Vec<String> = vec![];
-
-    if width == 0 {
-        return lines;
-    }
-
-    for i in 0..line.len() / width {
-        lines.push(line[i * width..i * width + width].into());
-    }
-
-    lines.push(line[line.len() - line.len() % width..line.len()].into());
-
-    lines
-}
 
 pub struct TextArea {
     document: Document,
@@ -63,7 +46,7 @@ impl TextArea {
 }
 
 impl Component for TextArea {
-    fn update(&mut self, event: Event, width: usize) -> io::Result<bool> {
+    fn update(&mut self, event: &Event, width: usize) -> io::Result<bool> {
         match event {
             Event::Input(c) => {
                 self.document.insert(c);
@@ -128,11 +111,11 @@ impl Component for TextArea {
         }
 
         for (i, row) in self.document.rows.iter().enumerate() {
-            let split_lines = split(row, width);
+            let split_lines = row.split(width, std::str::from_utf8(CLEAR_LINE).unwrap());
 
             if i == self.document.cursor.y {
-                cursor.x = self.document.cursor.x % width;
-                cursor.y = lines.len() + self.document.cursor.x / width;
+                cursor.x = self.document.cursor_display_x() % width;
+                cursor.y = lines.len() + self.document.cursor_display_x() / width;
             }
 
             lines.extend(split_lines);
@@ -153,25 +136,19 @@ impl Component for TextArea {
         let visible_lines = &mut lines[self.window_offset..last_line].to_vec();
 
         for _ in last_line..(self.window_offset + height) {
-            visible_lines.push(String::from("~"));
+            let style = &Style {
+                foreground: 7,
+                background: 234,
+                decoration: vec![],
+            };
+            visible_lines.push(styled(
+                style,
+                &format!("~{}", std::str::from_utf8(CLEAR_LINE).unwrap()),
+            ));
         }
 
-        let styled_lines: Vec<String> = visible_lines
-            .into_iter()
-            .map(|l| {
-                styled(
-                    &Style {
-                        foreground: 7,
-                        background: 234,
-                        decoration: vec![],
-                    },
-                    &l,
-                )
-            })
-            .collect();
-
         Window {
-            lines: styled_lines,
+            lines: visible_lines.clone(),
             cursor: cursor,
         }
     }

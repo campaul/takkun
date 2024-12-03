@@ -47,6 +47,7 @@ static mut TERMIOS: libc::termios = libc::termios {
 
 static CELL: OnceLock<libc::termios> = OnceLock::new();
 
+#[derive(Debug)]
 pub enum Event {
     Input(String),
 
@@ -288,7 +289,7 @@ fn write(buffer: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
-pub type In = dyn Fn() -> Event;
+pub type In = dyn Fn() -> Vec<Event>;
 pub type Out = dyn Fn(&[u8]) -> io::Result<()>;
 
 pub fn enter_alternate_buffer() -> io::Result<()> {
@@ -376,9 +377,26 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
     let (width, height) = get_window_size().unwrap();
     tx.send(Event::Resize(width, height)).unwrap();
 
-    let read = move || match rx.recv() {
-        Ok(e) => e,
-        Err(e) => Event::Error(e.to_string()),
+    let read = move || {
+        let mut events = vec![];
+
+        loop {
+            match rx.try_recv() {
+                Ok(e) => events.push(e),
+                // we can ignore the disconnect case because it will be caught
+                // in the below rx.recv()
+                _ => break,
+            }
+        }
+
+        if events.len() == 0 {
+            match rx.recv() {
+                Ok(e) => events.push(e),
+                Err(e) => events.push(Event::Error(e.to_string())),
+            }
+        }
+
+        events
     };
 
     Ok((Box::new(read), Box::new(write)))

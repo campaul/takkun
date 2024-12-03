@@ -31,7 +31,7 @@ impl Tabs {
 }
 
 impl Component for Tabs {
-    fn update(&mut self, e: Event, width: usize) -> io::Result<bool> {
+    fn update(&mut self, e: &Event, width: usize) -> io::Result<bool> {
         match e {
             Event::Next => {
                 self.selected = (self.selected + 1) % self.children.len();
