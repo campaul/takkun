@@ -396,7 +396,7 @@ mod tests {
         assert_eq!(document.current_line_len(), 0);
 
         // Returns 1 when the line has 1 character
-        document.insert(String::from(" "));
+        document.insert(&String::from(" "));
         assert_eq!(document.current_line_len(), 1);
 
         // Returns 0 when current line is empty
