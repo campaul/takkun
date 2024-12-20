@@ -24,12 +24,16 @@ fn decoration(style: &Style) -> String {
     decorations
 }
 
+pub fn tabbed(text: &String) -> String {
+    text.replace("\t", std::str::from_utf8(&[b' '; 4]).unwrap())
+}
+
 pub fn styled(style: &Style, text: &String) -> String {
     format!(
         "\x1b[0m{}\x1b[38;5;{}m\x1b[48;5;{}m{}",
         decoration(&style),
         style.foreground,
         style.background,
-        text.replace("\t", std::str::from_utf8(&[b' '; 4]).unwrap()),
+        text,
     )
 }

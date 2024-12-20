@@ -7,6 +7,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use crate::style::styled;
+use crate::style::tabbed;
 use crate::style::Style;
 
 #[derive(Copy, Clone)]
@@ -85,9 +86,9 @@ impl Row {
         for cell in self.cells.iter() {
             if &cell.style != style {
                 style = &cell.style;
-                line.push_str(&styled(&style, &cell.grapheme));
+                line.push_str(&tabbed(&styled(&style, &cell.grapheme)));
             } else {
-                line.push_str(&cell.grapheme);
+                line.push_str(&tabbed(&cell.grapheme));
             }
 
             if width + cell.width < max_width {
