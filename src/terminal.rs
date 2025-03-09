@@ -312,8 +312,8 @@ pub fn init() -> io::Result<(Box<In>, Box<Out>)> {
     unsafe {
         // TODO: error handling
         libc::tcgetattr(stdout.as_raw_fd(), addr_of_mut!(TERMIOS));
-        CELL.get_or_init(|| TERMIOS.clone());
-        libc::pipe(PIPES.as_mut_ptr());
+        CELL.get_or_init(|| TERMIOS);
+        libc::pipe(&raw mut PIPES[0]);
     }
 
     enter_alternate_buffer()?;

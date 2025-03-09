@@ -24,7 +24,7 @@ impl Status {
 
 impl Component for Status {
     fn update(&mut self, e: &Event, width: usize) -> io::Result<bool> {
-        if let Event::Error(ref error) = e {
+        if let Event::Error(error) = e {
             self.error = Some(error.to_string());
         }
 
