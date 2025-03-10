@@ -147,7 +147,7 @@ impl Editor {
                         // TODO: propagate this event to check for unsaved files
                         break 'outer;
                     }
-                    e => dirty = dirty || self.update(e)?,
+                    e => dirty = self.update(e)? || dirty,
                 }
             }
         }
